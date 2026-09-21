@@ -1,7 +1,8 @@
-import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { createReadStream } from 'node:fs'
+import { extname, join } from 'node:path'
 import { stat } from 'node:fs/promises'
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } from 'electron'
+import { Readable } from 'node:stream'
+import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
 import { analyzeAudio } from './services/audioAnalysis'
@@ -25,6 +26,52 @@ import type {
 protocol.registerSchemesAsPrivileged([
   { scheme: 'disco-audio', privileges: { secure: true, standard: true, stream: true } }
 ])
+
+const AUDIO_MIME_TYPES: Record<string, string> = {
+  '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
+  '.flac': 'audio/flac',
+  '.m4a': 'audio/mp4'
+}
+
+async function streamAudio(request: Request, filePath: string): Promise<Response> {
+  const file = await stat(filePath)
+  const range = request.headers.get('range')
+  let start = 0
+  let end = file.size - 1
+  let status = 200
+
+  if (range) {
+    const match = /^bytes=(\d*)-(\d*)$/.exec(range)
+    if (!match) return new Response(null, { status: 416 })
+
+    if (!match[1] && match[2]) {
+      start = Math.max(0, file.size - Number(match[2]))
+    } else {
+      start = Number(match[1])
+      if (match[2]) end = Math.min(Number(match[2]), file.size - 1)
+    }
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= file.size) {
+      return new Response(null, {
+        status: 416,
+        headers: { 'Content-Range': `bytes */${file.size}` }
+      })
+    }
+    status = 206
+  }
+
+  const headers = new Headers({
+    'Accept-Ranges': 'bytes',
+    'Content-Length': String(end - start + 1),
+    'Content-Type': AUDIO_MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream',
+    'Cache-Control': 'no-store'
+  })
+  if (status === 206) headers.set('Content-Range', `bytes ${start}-${end}/${file.size}`)
+  if (request.method === 'HEAD') return new Response(null, { status, headers })
+
+  const stream = createReadStream(filePath, { start, end })
+  return new Response(Readable.toWeb(stream) as ReadableStream<Uint8Array>, { status, headers })
+}
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -65,10 +112,7 @@ app.whenReady().then(() => {
     if (!entry) return new Response('Audio no autorizado.', { status: 404 })
 
     try {
-      await stat(entry.filePath)
-      return net.fetch(pathToFileURL(entry.filePath).toString(), {
-        headers: request.headers
-      })
+      return await streamAudio(request, entry.filePath)
     } catch {
       return new Response('Archivo no encontrado.', { status: 404 })
     }
