@@ -9,6 +9,8 @@ DISCO separa la interfaz de los procesos con acceso al sistema operativo.
 
 El binario oficial de `yt-dlp` se obtiene desde sus publicaciones de GitHub durante el primer análisis, se verifica mediante SHA-256 y se guarda en el directorio privado de datos de la aplicación.
 
+FFmpeg se distribuye como dependencia desempaquetada para que pueda ejecutarse tanto en Windows como en macOS. Antes de una distribución pública habrá que revisar la licencia del binario y decidir la política definitiva de empaquetado.
+
 ## Principios
 
 1. `contextIsolation` y sandbox activados.

@@ -62,7 +62,19 @@ button:disabled { color: #77747a; background: #29282d; cursor: not-allowed; }
 .media-source { color: #ff7046; font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
 .media-copy h2 { margin: 10px 0 6px; font-size: clamp(25px, 4vw, 38px); line-height: 1.05; letter-spacing: -.035em; }
 .media-copy p { margin: 0; color: #99989e; }
-.next-step { margin-top: 26px; padding-top: 18px; color: #77777e; border-top: 1px solid #29282d; font-size: 13px; }
+.export-panel { display: grid; gap: 12px; margin-top: 24px; padding-top: 18px; border-top: 1px solid #29282d; }
+.export-panel fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.export-panel legend { margin-bottom: 9px; color: #77777e; font-size: 12px; }
+.format-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.format-options label { margin: 0; padding: 9px 7px; color: #8c8b91; border: 1px solid #343339; border-radius: 8px; font-size: 11px; text-align: center; cursor: pointer; }
+.format-options label.selected { color: #fff3ed; border-color: #ff6335; background: rgba(255, 99, 53, .12); }
+.format-options input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.folder-button, .download-button, .success-button { min-height: 42px; padding: 10px 16px; }
+.folder-button { color: #d1cfd5; border: 1px solid #3b3a40; background: #1c1c20; }
+.folder-button:hover { background: #26262b; }
+.folder-path { overflow: hidden; color: #77777e; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.success-button { color: #baf6cf; border: 1px solid #285e3c; background: #173522; }
+.success-button:hover { background: #20482f; }
 
 .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 28px; overflow: hidden; border: 1px solid #242428; border-radius: 14px; background: #242428; }
 .features article { display: grid; gap: 7px; padding: 22px; background: #111114; }

@@ -11,3 +11,15 @@ export type AnalyzeResult =
   | { ok: true; media: MediaInfo }
   | { ok: false; error: string }
 
+export const AUDIO_FORMATS = ['wav', 'mp3', 'flac', 'm4a'] as const
+export type AudioFormat = (typeof AUDIO_FORMATS)[number]
+
+export type DownloadRequest = {
+  url: string
+  directory: string
+  format: AudioFormat
+}
+
+export type DownloadResult =
+  | { ok: true; filePath: string }
+  | { ok: false; error: string }

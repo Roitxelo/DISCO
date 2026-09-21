@@ -11,9 +11,9 @@
 
 - [x] Validar enlaces compatibles.
 - [x] Consultar título, canal, miniatura y duración.
-- [ ] Elegir carpeta de destino.
-- [ ] Descargar el mejor audio disponible.
-- [ ] Convertir a WAV, MP3, FLAC o M4A.
+- [x] Elegir carpeta de destino.
+- [x] Descargar el mejor audio disponible.
+- [x] Convertir a WAV, MP3, FLAC o M4A.
 - [ ] Mostrar progreso y errores recuperables.
 
 ## Fase 2 — Análisis musical

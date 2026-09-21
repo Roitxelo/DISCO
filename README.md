@@ -6,7 +6,7 @@ DISCO es una aplicación de escritorio para Windows y macOS orientada a producto
 
 ## Estado
 
-Proyecto en fase inicial. La interfaz base está preparada; la descarga, conversión y análisis todavía no están implementados.
+La aplicación ya reconoce enlaces de YouTube, muestra sus metadatos y permite exportar el audio en WAV, MP3, FLAC o M4A. El análisis de BPM y tonalidad todavía no está implementado.
 
 ## Stack
 
@@ -14,7 +14,8 @@ Proyecto en fase inicial. La interfaz base está preparada; la descarga, convers
 - React
 - TypeScript
 - Vite / electron-vite
-- FFmpeg y yt-dlp (integración prevista)
+- yt-dlp oficial con descarga y verificación automática
+- FFmpeg para conversión local
 - Essentia o motor equivalente (evaluación prevista)
 
 ## Desarrollo

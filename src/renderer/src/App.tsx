@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { MediaInfo } from '../../shared/media'
+import { AUDIO_FORMATS } from '../../shared/media'
+import type { AudioFormat, MediaInfo } from '../../shared/media'
 
 function formatDuration(totalSeconds: number): string {
   if (!totalSeconds) return 'Duración desconocida'
@@ -18,12 +19,17 @@ function App(): React.JSX.Element {
   const [media, setMedia] = useState<MediaInfo | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [format, setFormat] = useState<AudioFormat>('wav')
+  const [directory, setDirectory] = useState('')
+  const [downloading, setDownloading] = useState(false)
+  const [downloadedFile, setDownloadedFile] = useState('')
 
   async function analyze(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
     setLoading(true)
     setError('')
     setMedia(null)
+    setDownloadedFile('')
 
     try {
       const result = await window.disco.analyzeUrl(url)
@@ -33,6 +39,32 @@ function App(): React.JSX.Element {
       setError('La aplicación no pudo completar el análisis.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function selectFolder(): Promise<void> {
+    const selectedDirectory = await window.disco.selectFolder()
+    if (selectedDirectory) setDirectory(selectedDirectory)
+  }
+
+  async function download(): Promise<void> {
+    if (!media || !directory) return
+    setDownloading(true)
+    setDownloadedFile('')
+    setError('')
+
+    try {
+      const result = await window.disco.downloadAudio({
+        url: media.sourceUrl,
+        directory,
+        format
+      })
+      if (result.ok) setDownloadedFile(result.filePath)
+      else setError(result.error)
+    } catch {
+      setError('La aplicación no pudo completar la descarga.')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -86,7 +118,50 @@ function App(): React.JSX.Element {
               <span className="media-source">YouTube · {formatDuration(media.durationSeconds)}</span>
               <h2>{media.title}</h2>
               <p>{media.channel}</p>
-              <div className="next-step">Listo para elegir formato y analizar BPM y tonalidad.</div>
+              <div className="export-panel">
+                <fieldset>
+                  <legend>Formato</legend>
+                  <div className="format-options">
+                    {AUDIO_FORMATS.map((audioFormat) => (
+                      <label key={audioFormat} className={format === audioFormat ? 'selected' : ''}>
+                        <input
+                          type="radio"
+                          name="format"
+                          value={audioFormat}
+                          checked={format === audioFormat}
+                          onChange={() => setFormat(audioFormat)}
+                          disabled={downloading}
+                        />
+                        {audioFormat.toUpperCase()}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <button className="folder-button" type="button" onClick={selectFolder} disabled={downloading}>
+                  {directory ? 'Cambiar carpeta' : 'Elegir carpeta'}
+                </button>
+                {directory && <span className="folder-path" title={directory}>{directory}</span>}
+
+                <button
+                  className="download-button"
+                  type="button"
+                  onClick={download}
+                  disabled={!directory || downloading}
+                >
+                  {downloading ? `Preparando ${format.toUpperCase()}…` : `Descargar ${format.toUpperCase()}`}
+                </button>
+
+                {downloadedFile && (
+                  <button
+                    className="success-button"
+                    type="button"
+                    onClick={() => window.disco.revealFile(downloadedFile)}
+                  >
+                    Descarga terminada · Mostrar archivo
+                  </button>
+                )}
+              </div>
             </div>
           </article>
         )}

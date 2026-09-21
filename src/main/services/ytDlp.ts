@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
-import { access, chmod, mkdir, readFile, rename, rm } from 'node:fs/promises'
+import { access, chmod, mkdir, readFile, rename, rm, stat } from 'node:fs/promises'
 import { arch, platform } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
@@ -8,7 +8,9 @@ import { pipeline } from 'node:stream/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { app } from 'electron'
-import type { MediaInfo } from '../../shared/media'
+import ffmpegPath from 'ffmpeg-static'
+import { AUDIO_FORMATS } from '../../shared/media'
+import type { AudioFormat, MediaInfo } from '../../shared/media'
 
 const execFileAsync = promisify(execFile)
 const RELEASE_URL = 'https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest'
@@ -118,6 +120,11 @@ function getBinary(): Promise<string> {
   return binaryPromise
 }
 
+function getFfmpegPath(): string {
+  if (!ffmpegPath) throw new Error('FFmpeg no está disponible en esta instalación.')
+  return app.isPackaged ? ffmpegPath.replace('app.asar', 'app.asar.unpacked') : ffmpegPath
+}
+
 export function validateYoutubeUrl(rawUrl: string): URL {
   let url: URL
   try {
@@ -163,3 +170,44 @@ export async function getMediaInfo(rawUrl: string): Promise<MediaInfo> {
   }
 }
 
+export async function downloadAudio(
+  rawUrl: string,
+  directory: string,
+  format: AudioFormat
+): Promise<string> {
+  const url = validateYoutubeUrl(rawUrl)
+  if (!AUDIO_FORMATS.includes(format)) throw new Error('El formato seleccionado no es válido.')
+
+  const directoryInfo = await stat(directory).catch(() => null)
+  if (!directoryInfo?.isDirectory()) throw new Error('Selecciona una carpeta de destino válida.')
+
+  const binaryPath = await getBinary()
+  const outputTemplate = join(directory, '%(title).180B [%(id)s].%(ext)s')
+  const { stdout } = await execFileAsync(
+    binaryPath,
+    [
+      '--no-playlist',
+      '--newline',
+      '--no-warnings',
+      '--extract-audio',
+      '--audio-format',
+      format,
+      '--audio-quality',
+      '0',
+      '--ffmpeg-location',
+      getFfmpegPath(),
+      '--output',
+      outputTemplate,
+      '--print',
+      'after_move:filepath',
+      url.href
+    ],
+    { timeout: 30 * 60_000, maxBuffer: 16 * 1024 * 1024, windowsHide: true }
+  )
+
+  const outputPath = stdout.trim().split(/\r?\n/).filter(Boolean).at(-1)
+  if (!outputPath || !(await fileExists(outputPath))) {
+    throw new Error('La descarga terminó, pero no se encontró el archivo resultante.')
+  }
+  return outputPath
+}

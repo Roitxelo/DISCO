@@ -1,8 +1,8 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
-import { getMediaInfo } from './services/ytDlp'
-import type { AnalyzeResult } from '../shared/media'
+import { downloadAudio, getMediaInfo } from './services/ytDlp'
+import type { AnalyzeResult, DownloadRequest, DownloadResult } from '../shared/media'
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -45,6 +45,28 @@ app.whenReady().then(() => {
       const message = error instanceof Error ? error.message : 'No se pudo analizar el enlace.'
       return { ok: false, error: message }
     }
+  })
+
+  ipcMain.handle('folder:select', async (): Promise<string | null> => {
+    const result = await dialog.showOpenDialog({
+      title: 'Seleccionar carpeta para guardar el audio',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    return result.canceled ? null : result.filePaths[0] ?? null
+  })
+
+  ipcMain.handle('media:download', async (_event, request: DownloadRequest): Promise<DownloadResult> => {
+    try {
+      const filePath = await downloadAudio(request.url, request.directory, request.format)
+      return { ok: true, filePath }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo descargar el audio.'
+      return { ok: false, error: message }
+    }
+  })
+
+  ipcMain.handle('file:reveal', (_event, filePath: unknown): void => {
+    if (typeof filePath === 'string') shell.showItemInFolder(filePath)
   })
 
   createWindow()
