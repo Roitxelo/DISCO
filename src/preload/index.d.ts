@@ -2,6 +2,7 @@ export {}
 
 import type {
   AnalyzeResult,
+  AudioSourceResult,
   AudioAnalysisResult,
   DownloadRequest,
   DownloadResult,
@@ -23,6 +24,7 @@ declare global {
       listHistory: () => Promise<HistoryResult>
       saveHistory: (request: HistorySaveRequest) => Promise<HistoryResult>
       updateHistoryAnalysis: (request: HistoryAnalysisUpdate) => Promise<HistoryResult>
+      getAudioSource: (id: string) => Promise<AudioSourceResult>
       removeHistory: (id: string) => Promise<HistoryResult>
     }
   }

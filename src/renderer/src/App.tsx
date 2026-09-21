@@ -51,6 +51,8 @@ function App(): React.JSX.Element {
   const [analysisReview, setAnalysisReview] = useState<'pending' | 'confirmed' | 'corrected'>('pending')
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [historyError, setHistoryError] = useState('')
+  const [playingEntryId, setPlayingEntryId] = useState('')
+  const [audioSource, setAudioSource] = useState('')
 
   useEffect(() => {
     void window.disco.listHistory().then((result) => {
@@ -138,8 +140,30 @@ function App(): React.JSX.Element {
 
   async function removeHistory(id: string): Promise<void> {
     const result = await window.disco.removeHistory(id)
-    if (result.ok) setHistory(result.entries)
+    if (result.ok) {
+      setHistory(result.entries)
+      if (playingEntryId === id) {
+        setPlayingEntryId('')
+        setAudioSource('')
+      }
+    }
     else setHistoryError(result.error)
+  }
+
+  async function togglePlayer(id: string): Promise<void> {
+    setHistoryError('')
+    if (playingEntryId === id) {
+      setPlayingEntryId('')
+      setAudioSource('')
+      return
+    }
+    const result = await window.disco.getAudioSource(id)
+    if (result.ok) {
+      setPlayingEntryId(id)
+      setAudioSource(result.url)
+    } else {
+      setHistoryError(result.error)
+    }
   }
 
   async function saveCorrection(): Promise<void> {
@@ -395,9 +419,25 @@ function App(): React.JSX.Element {
                     </div>
                   </div>
                   <div className="history-actions">
+                    <button className={playingEntryId === entry.id ? 'active-player' : ''} type="button" onClick={() => togglePlayer(entry.id)}>
+                      {playingEntryId === entry.id ? 'Cerrar' : 'Escuchar'}
+                    </button>
                     <button type="button" onClick={() => window.disco.revealFile(entry.filePath)}>Mostrar</button>
                     <button className="remove-button" type="button" onClick={() => removeHistory(entry.id)}>Quitar</button>
                   </div>
+                  {playingEntryId === entry.id && audioSource && (
+                    <div className="history-player">
+                      <audio
+                        src={audioSource}
+                        controls
+                        autoPlay
+                        preload="metadata"
+                        onError={() => setHistoryError('No se pudo reproducir este archivo.')}
+                      >
+                        Tu sistema no permite reproducir este formato de audio.
+                      </audio>
+                    </div>
+                  )}
                 </article>
               ))}
             </div>

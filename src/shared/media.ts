@@ -62,3 +62,7 @@ export type HistoryAnalysisUpdate = {
 export type HistoryResult =
   | { ok: true; entries: HistoryEntry[] }
   | { ok: false; error: string }
+
+export type AudioSourceResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string }

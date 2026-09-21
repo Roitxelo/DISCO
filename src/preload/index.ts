@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
   AnalyzeResult,
+  AudioSourceResult,
   AudioAnalysisResult,
   DownloadRequest,
   DownloadResult,
@@ -24,5 +25,7 @@ contextBridge.exposeInMainWorld('disco', {
     ipcRenderer.invoke('history:save', request),
   updateHistoryAnalysis: (request: HistoryAnalysisUpdate): Promise<HistoryResult> =>
     ipcRenderer.invoke('history:update-analysis', request),
+  getAudioSource: (id: string): Promise<AudioSourceResult> =>
+    ipcRenderer.invoke('history:audio-source', id),
   removeHistory: (id: string): Promise<HistoryResult> => ipcRenderer.invoke('history:remove', id)
 })

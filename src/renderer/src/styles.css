@@ -121,7 +121,10 @@ button:disabled { color: #77747a; background: #29282d; cursor: not-allowed; }
 .history-actions { display: flex; gap: 6px; }
 .history-actions button { min-height: 34px; padding: 7px 11px; color: #d6d3d7; border: 1px solid #3b3a40; background: #1c1c20; font-size: 11px; }
 .history-actions button:hover { background: #29282e; }
+.history-actions button.active-player { color: #ffd0c2; border-color: #ff6335; background: rgba(255, 99, 53, .12); }
 .history-actions .remove-button { color: #a09da2; border-color: transparent; background: transparent; }
+.history-player { grid-column: 1 / -1; padding: 9px 10px 5px; border-top: 1px solid #29282d; }
+.history-player audio { display: block; width: 100%; height: 38px; accent-color: #ff6335; }
 
 .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 28px; overflow: hidden; border: 1px solid #242428; border-radius: 14px; background: #242428; }
 .features article { display: grid; gap: 7px; padding: 22px; background: #111114; }

@@ -1,5 +1,7 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { pathToFileURL } from 'node:url'
+import { stat } from 'node:fs/promises'
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
 import { analyzeAudio } from './services/audioAnalysis'
@@ -11,6 +13,7 @@ import {
 } from './services/history'
 import type {
   AnalyzeResult,
+  AudioSourceResult,
   AudioAnalysisResult,
   DownloadRequest,
   DownloadResult,
@@ -18,6 +21,10 @@ import type {
   HistoryAnalysisUpdate,
   HistorySaveRequest
 } from '../shared/media'
+
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'disco-audio', privileges: { secure: true, standard: true, stream: true } }
+])
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -51,6 +58,22 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  protocol.handle('disco-audio', async (request) => {
+    const url = new URL(request.url)
+    const id = decodeURIComponent(url.pathname.slice(1))
+    const entry = (await listHistory()).find((item) => item.id === id)
+    if (!entry) return new Response('Audio no autorizado.', { status: 404 })
+
+    try {
+      await stat(entry.filePath)
+      return net.fetch(pathToFileURL(entry.filePath).toString(), {
+        headers: request.headers
+      })
+    } catch {
+      return new Response('Archivo no encontrado.', { status: 404 })
+    }
+  })
+
   ipcMain.handle('media:analyze', async (_event, url: unknown): Promise<AnalyzeResult> => {
     if (typeof url !== 'string') return { ok: false, error: 'El enlace recibido no es válido.' }
 
@@ -127,6 +150,18 @@ app.whenReady().then(() => {
       return { ok: true, entries: await updateHistoryAnalysis(request) }
     } catch {
       return { ok: false, error: 'No se pudo guardar la corrección musical.' }
+    }
+  })
+
+  ipcMain.handle('history:audio-source', async (_event, id: unknown): Promise<AudioSourceResult> => {
+    if (typeof id !== 'string') return { ok: false, error: 'La entrada no es válida.' }
+    const entry = (await listHistory()).find((item) => item.id === id)
+    if (!entry) return { ok: false, error: 'El audio ya no está en la biblioteca.' }
+    try {
+      await stat(entry.filePath)
+      return { ok: true, url: `disco-audio://history/${encodeURIComponent(id)}` }
+    } catch {
+      return { ok: false, error: 'No se encuentra el archivo. Puede que se haya movido o eliminado.' }
     }
   })
 
