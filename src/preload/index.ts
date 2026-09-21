@@ -3,7 +3,9 @@ import type {
   AnalyzeResult,
   AudioAnalysisResult,
   DownloadRequest,
-  DownloadResult
+  DownloadResult,
+  HistoryResult,
+  HistorySaveRequest
 } from '../shared/media'
 
 contextBridge.exposeInMainWorld('disco', {
@@ -15,5 +17,9 @@ contextBridge.exposeInMainWorld('disco', {
     ipcRenderer.invoke('media:download', request),
   revealFile: (filePath: string): Promise<void> => ipcRenderer.invoke('file:reveal', filePath),
   analyzeAudio: (filePath: string): Promise<AudioAnalysisResult> =>
-    ipcRenderer.invoke('audio:analyze', filePath)
+    ipcRenderer.invoke('audio:analyze', filePath),
+  listHistory: (): Promise<HistoryResult> => ipcRenderer.invoke('history:list'),
+  saveHistory: (request: HistorySaveRequest): Promise<HistoryResult> =>
+    ipcRenderer.invoke('history:save', request),
+  removeHistory: (id: string): Promise<HistoryResult> => ipcRenderer.invoke('history:remove', id)
 })

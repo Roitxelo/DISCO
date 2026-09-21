@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { AUDIO_FORMATS } from '../../shared/media'
-import type { AudioAnalysis, AudioFormat, MediaInfo } from '../../shared/media'
+import type { AudioAnalysis, AudioFormat, HistoryEntry, MediaInfo } from '../../shared/media'
 
 function formatDuration(totalSeconds: number): string {
   if (!totalSeconds) return 'Duración desconocida'
@@ -12,6 +12,12 @@ function formatDuration(totalSeconds: number): string {
     .filter((_, index) => hours > 0 || index > 0)
     .map((value) => value.toString().padStart(2, '0'))
     .join(':')
+}
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+  }).format(new Date(value))
 }
 
 function App(): React.JSX.Element {
@@ -27,6 +33,22 @@ function App(): React.JSX.Element {
   const [displayBpm, setDisplayBpm] = useState(0)
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisError, setAnalysisError] = useState('')
+  const [history, setHistory] = useState<HistoryEntry[]>([])
+  const [historyError, setHistoryError] = useState('')
+
+  useEffect(() => {
+    void window.disco.listHistory().then((result) => {
+      if (result.ok) setHistory(result.entries)
+      else setHistoryError(result.error)
+    })
+  }, [])
+
+  async function saveToHistory(filePath: string, audioAnalysis: AudioAnalysis | null): Promise<void> {
+    if (!media) return
+    const result = await window.disco.saveHistory({ media, format, filePath, analysis: audioAnalysis })
+    if (result.ok) setHistory(result.entries)
+    else setHistoryError(result.error)
+  }
 
   async function analyze(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
@@ -74,8 +96,10 @@ function App(): React.JSX.Element {
         if (analysisResult.ok) {
           setAnalysis(analysisResult.analysis)
           setDisplayBpm(analysisResult.analysis.bpm)
+          await saveToHistory(result.filePath, analysisResult.analysis)
         } else {
           setAnalysisError(analysisResult.error)
+          await saveToHistory(result.filePath, null)
         }
       } else {
         setError(result.error)
@@ -86,6 +110,12 @@ function App(): React.JSX.Element {
       setDownloading(false)
       setAnalyzing(false)
     }
+  }
+
+  async function removeHistory(id: string): Promise<void> {
+    const result = await window.disco.removeHistory(id)
+    if (result.ok) setHistory(result.entries)
+    else setHistoryError(result.error)
   }
 
   return (
@@ -221,6 +251,42 @@ function App(): React.JSX.Element {
             <article><strong>— KEY</strong><span>Tonalidad y Camelot</span></article>
           </div>
         )}
+
+        <section className="library" aria-labelledby="library-title">
+          <div className="library-heading">
+            <div>
+              <p className="eyebrow">ORGANIZE</p>
+              <h2 id="library-title">Biblioteca reciente</h2>
+            </div>
+            <span>{history.length} {history.length === 1 ? 'descarga' : 'descargas'}</span>
+          </div>
+          {historyError && <p className="error" role="alert">{historyError}</p>}
+          {history.length === 0 ? (
+            <p className="empty-library">Tus próximas descargas aparecerán aquí automáticamente.</p>
+          ) : (
+            <div className="history-list">
+              {history.map((entry) => (
+                <article className="history-entry" key={entry.id}>
+                  {entry.media.thumbnailUrl ? <img src={entry.media.thumbnailUrl} alt="" /> : <div className="history-placeholder" />}
+                  <div className="history-copy">
+                    <strong title={entry.media.title}>{entry.media.title}</strong>
+                    <span>{entry.media.channel} · {formatDate(entry.createdAt)}</span>
+                    <div className="history-tags">
+                      <span>{entry.format.toUpperCase()}</span>
+                      {entry.analysis && <span>{entry.analysis.bpm.toFixed(1)} BPM</span>}
+                      {entry.analysis && <span>{entry.analysis.key} {entry.analysis.mode === 'major' ? 'mayor' : 'menor'}</span>}
+                      {entry.analysis && <span>{entry.analysis.camelot}</span>}
+                    </div>
+                  </div>
+                  <div className="history-actions">
+                    <button type="button" onClick={() => window.disco.revealFile(entry.filePath)}>Mostrar</button>
+                    <button className="remove-button" type="button" onClick={() => removeHistory(entry.id)}>Quitar</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
       </section>
 
       <footer>Usa DISCO únicamente con contenido propio, autorizado o permitido por su licencia.</footer>

@@ -35,3 +35,18 @@ export type AudioAnalysis = {
 export type AudioAnalysisResult =
   | { ok: true; analysis: AudioAnalysis }
   | { ok: false; error: string }
+
+export type HistoryEntry = {
+  id: string
+  createdAt: string
+  media: MediaInfo
+  format: AudioFormat
+  filePath: string
+  analysis: AudioAnalysis | null
+}
+
+export type HistorySaveRequest = Omit<HistoryEntry, 'id' | 'createdAt'>
+
+export type HistoryResult =
+  | { ok: true; entries: HistoryEntry[] }
+  | { ok: false; error: string }

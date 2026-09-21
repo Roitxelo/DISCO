@@ -3,11 +3,14 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
 import { analyzeAudio } from './services/audioAnalysis'
+import { listHistory, removeHistoryEntry, saveHistoryEntry } from './services/history'
 import type {
   AnalyzeResult,
   AudioAnalysisResult,
   DownloadRequest,
-  DownloadResult
+  DownloadResult,
+  HistoryResult,
+  HistorySaveRequest
 } from '../shared/media'
 
 function createWindow(): void {
@@ -82,6 +85,31 @@ app.whenReady().then(() => {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo analizar el audio.'
       return { ok: false, error: message }
+    }
+  })
+
+  ipcMain.handle('history:list', async (): Promise<HistoryResult> => {
+    try {
+      return { ok: true, entries: await listHistory() }
+    } catch {
+      return { ok: false, error: 'No se pudo cargar el historial.' }
+    }
+  })
+
+  ipcMain.handle('history:save', async (_event, request: HistorySaveRequest): Promise<HistoryResult> => {
+    try {
+      return { ok: true, entries: await saveHistoryEntry(request) }
+    } catch {
+      return { ok: false, error: 'No se pudo guardar la descarga en el historial.' }
+    }
+  })
+
+  ipcMain.handle('history:remove', async (_event, id: unknown): Promise<HistoryResult> => {
+    if (typeof id !== 'string') return { ok: false, error: 'La entrada no es válida.' }
+    try {
+      return { ok: true, entries: await removeHistoryEntry(id) }
+    } catch {
+      return { ok: false, error: 'No se pudo eliminar la entrada del historial.' }
     }
   })
 
