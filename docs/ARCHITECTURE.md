@@ -7,6 +7,8 @@ DISCO separa la interfaz de los procesos con acceso al sistema operativo.
 - **Main:** ventanas, sistema de archivos y futuros procesos externos.
 - **Workers futuros:** descarga, conversión y análisis fuera del hilo de interfaz.
 
+El binario oficial de `yt-dlp` se obtiene desde sus publicaciones de GitHub durante el primer análisis, se verifica mediante SHA-256 y se guarda en el directorio privado de datos de la aplicación.
+
 ## Principios
 
 1. `contextIsolation` y sandbox activados.

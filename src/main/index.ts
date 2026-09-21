@@ -1,6 +1,8 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
+import { getMediaInfo } from './services/ytDlp'
+import type { AnalyzeResult } from '../shared/media'
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -34,6 +36,17 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  ipcMain.handle('media:analyze', async (_event, url: unknown): Promise<AnalyzeResult> => {
+    if (typeof url !== 'string') return { ok: false, error: 'El enlace recibido no es válido.' }
+
+    try {
+      return { ok: true, media: await getMediaInfo(url) }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo analizar el enlace.'
+      return { ok: false, error: message }
+    }
+  })
+
   createWindow()
 
   app.on('activate', () => {

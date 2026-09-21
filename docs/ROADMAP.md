@@ -9,8 +9,8 @@
 
 ## Fase 1 — Flujo principal
 
-- [ ] Validar enlaces compatibles.
-- [ ] Consultar título, canal, miniatura y duración.
+- [x] Validar enlaces compatibles.
+- [x] Consultar título, canal, miniatura y duración.
 - [ ] Elegir carpeta de destino.
 - [ ] Descargar el mejor audio disponible.
 - [ ] Convertir a WAV, MP3, FLAC o M4A.
