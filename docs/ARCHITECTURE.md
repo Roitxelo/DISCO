@@ -1,0 +1,16 @@
+# Arquitectura inicial
+
+DISCO separa la interfaz de los procesos con acceso al sistema operativo.
+
+- **Renderer:** React. No dispone de acceso directo a Node.js.
+- **Preload:** API mínima, tipada y controlada.
+- **Main:** ventanas, sistema de archivos y futuros procesos externos.
+- **Workers futuros:** descarga, conversión y análisis fuera del hilo de interfaz.
+
+## Principios
+
+1. `contextIsolation` y sandbox activados.
+2. Ningún comando de shell se construirá concatenando datos del usuario.
+3. Los binarios externos no se guardarán en Git.
+4. Las tareas largas informarán de progreso y podrán cancelarse.
+5. Los metadatos e historial permanecerán en el equipo del usuario.
