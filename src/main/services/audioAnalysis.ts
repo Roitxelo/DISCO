@@ -56,7 +56,7 @@ function correlation(values: number[], lag: number): number {
 }
 
 function estimateBpm(samples: Float32Array): number {
-  const hopSize = 512
+  const hopSize = 256
   const envelope: number[] = []
   let previousEnergy = 0
 
@@ -71,19 +71,27 @@ function estimateBpm(samples: Float32Array): number {
   const mean = envelope.reduce((sum, value) => sum + value, 0) / Math.max(1, envelope.length)
   const centered = envelope.map((value) => Math.max(0, value - mean * 0.65))
   const envelopeRate = SAMPLE_RATE / hopSize
-  let bestBpm = 120
+  let bestLag = Math.round((60 * envelopeRate) / 120)
   let bestScore = Number.NEGATIVE_INFINITY
 
-  for (let bpm = 60; bpm <= 200; bpm += 0.25) {
-    const lag = Math.round((60 * envelopeRate) / bpm)
+  const minimumLag = Math.floor((60 * envelopeRate) / 190)
+  const maximumLag = Math.ceil((60 * envelopeRate) / 65)
+  const scores = new Map<number, number>()
+  for (let lag = minimumLag; lag <= maximumLag; lag += 1) {
     const score = correlation(centered, lag) + correlation(centered, lag * 2) * 0.35
+    scores.set(lag, score)
     if (score > bestScore) {
       bestScore = score
-      bestBpm = bpm
+      bestLag = lag
     }
   }
 
-  return Math.round(bestBpm * 10) / 10
+  const previous = scores.get(bestLag - 1) ?? bestScore
+  const next = scores.get(bestLag + 1) ?? bestScore
+  const denominator = previous - 2 * bestScore + next
+  const offset = Math.abs(denominator) > 1e-9 ? 0.5 * (previous - next) / denominator : 0
+  const refinedLag = bestLag + Math.max(-0.5, Math.min(0.5, offset))
+  return Math.round(((60 * envelopeRate) / refinedLag) * 10) / 10
 }
 
 function pearson(values: number[], profile: number[], tonic: number): number {
@@ -119,8 +127,21 @@ function estimateKey(samples: Float32Array): Pick<AudioAnalysis, 'key' | 'mode' 
 
   const candidates: Array<{ tonic: number; mode: 'major' | 'minor'; score: number }> = []
   for (let tonic = 0; tonic < 12; tonic += 1) {
-    candidates.push({ tonic, mode: 'major', score: pearson(accumulated, MAJOR_PROFILE, tonic) })
-    candidates.push({ tonic, mode: 'minor', score: pearson(accumulated, MINOR_PROFILE, tonic) })
+    const maximumChroma = Math.max(...accumulated, 1e-12)
+    const rootEvidence = accumulated[tonic] / maximumChroma
+    const majorThirdEvidence = accumulated[(tonic + 4) % 12] / maximumChroma
+    const minorThirdEvidence = accumulated[(tonic + 3) % 12] / maximumChroma
+    const fifthEvidence = accumulated[(tonic + 7) % 12] / maximumChroma
+    candidates.push({
+      tonic,
+      mode: 'major',
+      score: pearson(accumulated, MAJOR_PROFILE, tonic) + rootEvidence * 0.18 + majorThirdEvidence * 0.05 + fifthEvidence * 0.04
+    })
+    candidates.push({
+      tonic,
+      mode: 'minor',
+      score: pearson(accumulated, MINOR_PROFILE, tonic) + rootEvidence * 0.18 + minorThirdEvidence * 0.05 + fifthEvidence * 0.04
+    })
   }
   candidates.sort((a, b) => b.score - a.score)
   const best = candidates[0]
@@ -147,4 +168,3 @@ export async function analyzeAudio(filePath: string): Promise<AudioAnalysis> {
     ...estimateKey(samples)
   }
 }
-

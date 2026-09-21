@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
-import { access, chmod, mkdir, readFile, rename, rm, stat } from 'node:fs/promises'
+import { access, chmod, mkdir, readFile, readdir, rename, rm, stat } from 'node:fs/promises'
 import { arch, platform } from 'node:os'
-import { join } from 'node:path'
+import { extname, isAbsolute, join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { execFile } from 'node:child_process'
@@ -183,6 +183,7 @@ export async function downloadAudio(
 
   const binaryPath = await getBinary()
   const outputTemplate = join(directory, '%(title).180B [%(id)s].%(ext)s')
+  const downloadStartedAt = Date.now()
   const { stdout } = await execFileAsync(
     binaryPath,
     [
@@ -205,9 +206,37 @@ export async function downloadAudio(
     { timeout: 30 * 60_000, maxBuffer: 16 * 1024 * 1024, windowsHide: true }
   )
 
-  const outputPath = stdout.trim().split(/\r?\n/).filter(Boolean).at(-1)
-  if (!outputPath || !(await fileExists(outputPath))) {
-    throw new Error('La descarga terminó, pero no se encontró el archivo resultante.')
+  const printedPath = stdout
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .at(-1)
+    ?.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '')
+    .replace(/^['"]|['"]$/g, '')
+    .trim()
+  const resolvedPrintedPath = printedPath
+    ? isAbsolute(printedPath) ? printedPath : resolve(directory, printedPath)
+    : null
+
+  if (resolvedPrintedPath && await fileExists(resolvedPrintedPath)) return resolvedPrintedPath
+
+  const candidates = await Promise.all(
+    (await readdir(directory)).map(async (name) => {
+      const path = join(directory, name)
+      const info = await stat(path).catch(() => null)
+      return { path, name, info }
+    })
+  )
+  const fallback = candidates
+    .filter(({ name, info }) =>
+      info?.isFile() &&
+      extname(name).toLowerCase() === `.${format}` &&
+      info.mtimeMs >= downloadStartedAt - 5_000
+    )
+    .sort((a, b) => (b.info?.mtimeMs ?? 0) - (a.info?.mtimeMs ?? 0))[0]
+
+  if (!fallback) {
+    throw new Error('La descarga terminó, pero DISCO no pudo localizar el archivo resultante.')
   }
-  return outputPath
+  return fallback.path
 }
