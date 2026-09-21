@@ -120,7 +120,7 @@ function getBinary(): Promise<string> {
   return binaryPromise
 }
 
-function getFfmpegPath(): string {
+export function getFfmpegPath(): string {
   if (!ffmpegPath) throw new Error('FFmpeg no está disponible en esta instalación.')
   return app.isPackaged ? ffmpegPath.replace('app.asar', 'app.asar.unpacked') : ffmpegPath
 }

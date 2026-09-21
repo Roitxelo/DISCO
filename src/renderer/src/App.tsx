@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { AUDIO_FORMATS } from '../../shared/media'
-import type { AudioFormat, MediaInfo } from '../../shared/media'
+import type { AudioAnalysis, AudioFormat, MediaInfo } from '../../shared/media'
 
 function formatDuration(totalSeconds: number): string {
   if (!totalSeconds) return 'Duración desconocida'
@@ -23,6 +23,10 @@ function App(): React.JSX.Element {
   const [directory, setDirectory] = useState('')
   const [downloading, setDownloading] = useState(false)
   const [downloadedFile, setDownloadedFile] = useState('')
+  const [analysis, setAnalysis] = useState<AudioAnalysis | null>(null)
+  const [displayBpm, setDisplayBpm] = useState(0)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analysisError, setAnalysisError] = useState('')
 
   async function analyze(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
@@ -30,6 +34,8 @@ function App(): React.JSX.Element {
     setError('')
     setMedia(null)
     setDownloadedFile('')
+    setAnalysis(null)
+    setAnalysisError('')
 
     try {
       const result = await window.disco.analyzeUrl(url)
@@ -51,6 +57,8 @@ function App(): React.JSX.Element {
     if (!media || !directory) return
     setDownloading(true)
     setDownloadedFile('')
+    setAnalysis(null)
+    setAnalysisError('')
     setError('')
 
     try {
@@ -59,12 +67,24 @@ function App(): React.JSX.Element {
         directory,
         format
       })
-      if (result.ok) setDownloadedFile(result.filePath)
-      else setError(result.error)
+      if (result.ok) {
+        setDownloadedFile(result.filePath)
+        setAnalyzing(true)
+        const analysisResult = await window.disco.analyzeAudio(result.filePath)
+        if (analysisResult.ok) {
+          setAnalysis(analysisResult.analysis)
+          setDisplayBpm(analysisResult.analysis.bpm)
+        } else {
+          setAnalysisError(analysisResult.error)
+        }
+      } else {
+        setError(result.error)
+      }
     } catch {
       setError('La aplicación no pudo completar la descarga.')
     } finally {
       setDownloading(false)
+      setAnalyzing(false)
     }
   }
 
@@ -160,6 +180,34 @@ function App(): React.JSX.Element {
                   >
                     Descarga terminada · Mostrar archivo
                   </button>
+                )}
+
+                {analyzing && <p className="analysis-status" role="status">Detectando BPM y tonalidad…</p>}
+                {analysisError && <p className="error" role="alert">{analysisError}</p>}
+
+                {analysis && (
+                  <section className="analysis-results" aria-label="Análisis musical estimado">
+                    <div className="analysis-heading">
+                      <span>Análisis estimado</span>
+                      <small>Confianza tonal: {analysis.keyConfidence}%</small>
+                    </div>
+                    <div className="analysis-values">
+                      <article>
+                        <span>BPM</span>
+                        <strong>{displayBpm.toFixed(1)}</strong>
+                        <div className="bpm-controls">
+                          <button type="button" onClick={() => setDisplayBpm((value) => value / 2)}>÷2</button>
+                          <button type="button" onClick={() => setDisplayBpm(analysis.bpm)}>Original</button>
+                          <button type="button" onClick={() => setDisplayBpm((value) => value * 2)}>×2</button>
+                        </div>
+                      </article>
+                      <article>
+                        <span>Tonalidad</span>
+                        <strong>{analysis.key} {analysis.mode === 'major' ? 'mayor' : 'menor'}</strong>
+                        <small>{analysis.camelot} · Camelot</small>
+                      </article>
+                    </div>
+                  </section>
                 )}
               </div>
             </div>

@@ -2,7 +2,13 @@ import { join } from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
-import type { AnalyzeResult, DownloadRequest, DownloadResult } from '../shared/media'
+import { analyzeAudio } from './services/audioAnalysis'
+import type {
+  AnalyzeResult,
+  AudioAnalysisResult,
+  DownloadRequest,
+  DownloadResult
+} from '../shared/media'
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -67,6 +73,16 @@ app.whenReady().then(() => {
 
   ipcMain.handle('file:reveal', (_event, filePath: unknown): void => {
     if (typeof filePath === 'string') shell.showItemInFolder(filePath)
+  })
+
+  ipcMain.handle('audio:analyze', async (_event, filePath: unknown): Promise<AudioAnalysisResult> => {
+    if (typeof filePath !== 'string') return { ok: false, error: 'El archivo recibido no es válido.' }
+    try {
+      return { ok: true, analysis: await analyzeAudio(filePath) }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo analizar el audio.'
+      return { ok: false, error: message }
+    }
   })
 
   createWindow()

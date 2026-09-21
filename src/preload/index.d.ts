@@ -1,6 +1,11 @@
 export {}
 
-import type { AnalyzeResult, DownloadRequest, DownloadResult } from '../shared/media'
+import type {
+  AnalyzeResult,
+  AudioAnalysisResult,
+  DownloadRequest,
+  DownloadResult
+} from '../shared/media'
 
 declare global {
   interface Window {
@@ -11,6 +16,7 @@ declare global {
       selectFolder: () => Promise<string | null>
       downloadAudio: (request: DownloadRequest) => Promise<DownloadResult>
       revealFile: (filePath: string) => Promise<void>
+      analyzeAudio: (filePath: string) => Promise<AudioAnalysisResult>
     }
   }
 }

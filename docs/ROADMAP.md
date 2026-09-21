@@ -18,10 +18,10 @@
 
 ## Fase 2 — Análisis musical
 
-- [ ] Estimar BPM.
-- [ ] Proponer BPM doble o mitad.
-- [ ] Estimar tonalidad mayor o menor.
-- [ ] Convertir tonalidad a Camelot.
+- [x] Estimar BPM.
+- [x] Proponer BPM doble o mitad.
+- [x] Estimar tonalidad mayor o menor.
+- [x] Convertir tonalidad a Camelot.
 - [ ] Permitir corrección manual.
 
 ## Fase 3 — Biblioteca

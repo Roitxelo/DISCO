@@ -23,3 +23,15 @@ export type DownloadRequest = {
 export type DownloadResult =
   | { ok: true; filePath: string }
   | { ok: false; error: string }
+
+export type AudioAnalysis = {
+  bpm: number
+  key: string
+  mode: 'major' | 'minor'
+  camelot: string
+  keyConfidence: number
+}
+
+export type AudioAnalysisResult =
+  | { ok: true; analysis: AudioAnalysis }
+  | { ok: false; error: string }

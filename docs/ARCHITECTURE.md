@@ -11,6 +11,8 @@ El binario oficial de `yt-dlp` se obtiene desde sus publicaciones de GitHub dura
 
 FFmpeg se distribuye como dependencia desempaquetada para que pueda ejecutarse tanto en Windows como en macOS. Antes de una distribución pública habrá que revisar la licencia del binario y decidir la política definitiva de empaquetado.
 
+El análisis musical usa una señal mono temporal a 22.050 Hz. El BPM se estima mediante una envolvente de ataques y autocorrelación; la tonalidad se calcula a partir del perfil cromático y su correlación con perfiles mayor y menor. Los resultados se presentan siempre como estimaciones corregibles.
+
 ## Principios
 
 1. `contextIsolation` y sandbox activados.
