@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { AUDIO_FORMATS } from '../../shared/media'
-import type { AudioAnalysis, AudioFormat, HistoryEntry, MediaInfo } from '../../shared/media'
+import { AUDIO_FORMATS, SAMPLE_FORMATS } from '../../shared/media'
+import type { AudioAnalysis, AudioFormat, HistoryEntry, MediaInfo, SampleFormat } from '../../shared/media'
 
 const MUSICAL_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
 const CAMELOT_MAJOR = ['8B', '3B', '10B', '5B', '12B', '7B', '2B', '9B', '4B', '11B', '6B', '1B']
@@ -66,6 +66,10 @@ function App(): React.JSX.Element {
   const [selectionStart, setSelectionStart] = useState(0)
   const [selectionEnd, setSelectionEnd] = useState(0)
   const [loopSelection, setLoopSelection] = useState(true)
+  const [sampleFormat, setSampleFormat] = useState<SampleFormat>('wav')
+  const [exportingSample, setExportingSample] = useState(false)
+  const [exportedSample, setExportedSample] = useState('')
+  const [sampleError, setSampleError] = useState('')
   const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
@@ -181,6 +185,8 @@ function App(): React.JSX.Element {
       setAudioDuration(0)
       setSelectionStart(0)
       setSelectionEnd(0)
+      setExportedSample('')
+      setSampleError('')
       setWaveformLoading(true)
       const waveform = await window.disco.getWaveform(id)
       if (waveform.ok) setWaveformUrl(waveform.imageUrl)
@@ -207,6 +213,25 @@ function App(): React.JSX.Element {
     } else {
       player.pause()
     }
+  }
+
+  async function saveSample(): Promise<void> {
+    if (!playingEntryId || selectionEnd <= selectionStart) return
+    setExportingSample(true)
+    setExportedSample('')
+    setSampleError('')
+    const result = await window.disco.exportSample({
+      historyId: playingEntryId,
+      startSeconds: selectionStart,
+      endSeconds: selectionEnd,
+      format: sampleFormat
+    })
+    if (result.ok) {
+      if (result.filePath) setExportedSample(result.filePath)
+    } else {
+      setSampleError(result.error)
+    }
+    setExportingSample(false)
   }
 
   async function saveCorrection(): Promise<void> {
@@ -518,6 +543,19 @@ function App(): React.JSX.Element {
                               </label>
                               <span>{formatTimestamp(selectionEnd - selectionStart)}</span>
                             </div>
+                            <div className="sample-export">
+                              <label>
+                                Formato
+                                <select value={sampleFormat} onChange={(event) => setSampleFormat(event.target.value as SampleFormat)} disabled={exportingSample}>
+                                  {SAMPLE_FORMATS.map((value) => <option key={value} value={value}>{value.toUpperCase()}</option>)}
+                                </select>
+                              </label>
+                              <button type="button" onClick={saveSample} disabled={exportingSample || selectionEnd - selectionStart < 0.05}>
+                                {exportingSample ? 'Exportando…' : 'Exportar sample'}
+                              </button>
+                              {exportedSample && <button className="export-success" type="button" onClick={() => window.disco.revealFile(exportedSample)}>Mostrar sample</button>}
+                            </div>
+                            {sampleError && <p className="error" role="alert">{sampleError}</p>}
                           </div>
                         )}
                       </div>

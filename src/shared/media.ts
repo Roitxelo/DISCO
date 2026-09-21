@@ -70,3 +70,17 @@ export type AudioSourceResult =
 export type WaveformResult =
   | { ok: true; imageUrl: string }
   | { ok: false; error: string }
+
+export const SAMPLE_FORMATS = ['wav', 'mp3', 'flac'] as const
+export type SampleFormat = (typeof SAMPLE_FORMATS)[number]
+
+export type SampleExportRequest = {
+  historyId: string
+  startSeconds: number
+  endSeconds: number
+  format: SampleFormat
+}
+
+export type SampleExportResult =
+  | { ok: true; filePath: string | null }
+  | { ok: false; error: string }

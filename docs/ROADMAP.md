@@ -50,12 +50,12 @@ consulta de metadatos, descarga, conversión, análisis musical, revisión de re
 
 ## Fase 4 — Sample
 
-- [ ] Dibujar la forma de onda del archivo seleccionado.
-- [ ] Marcar inicio y final de un fragmento.
-- [ ] Reproducir la selección en bucle.
-- [ ] Exportar el fragmento en WAV, MP3 o FLAC.
-- [ ] Aplicar fundidos cortos para evitar clics.
-- [ ] Nombrar el sample con título, BPM y tonalidad.
+- [x] Dibujar la forma de onda del archivo seleccionado.
+- [x] Marcar inicio y final de un fragmento.
+- [x] Reproducir la selección en bucle.
+- [x] Exportar el fragmento en WAV, MP3 o FLAC.
+- [x] Aplicar fundidos cortos para evitar clics.
+- [x] Nombrar el sample con título, BPM y tonalidad.
 - [ ] Ajustar la selección a 1, 2, 4 u 8 compases.
 - [ ] Añadir normalización opcional.
 

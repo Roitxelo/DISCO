@@ -1,12 +1,14 @@
 import { createReadStream } from 'node:fs'
-import { extname, join } from 'node:path'
+import { dirname, extname, join } from 'node:path'
 import { stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
+import { SAMPLE_FORMATS } from '../shared/media'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
 import { analyzeAudio } from './services/audioAnalysis'
 import { generateWaveform } from './services/waveform'
+import { exportSample } from './services/sampleExport'
 import {
   listHistory,
   removeHistoryEntry,
@@ -22,7 +24,9 @@ import type {
   HistoryResult,
   HistoryAnalysisUpdate,
   HistorySaveRequest,
-  WaveformResult
+  WaveformResult,
+  SampleExportRequest,
+  SampleExportResult
 } from '../shared/media'
 
 protocol.registerSchemesAsPrivileged([
@@ -219,6 +223,54 @@ app.whenReady().then(() => {
       return { ok: true, imageUrl: await generateWaveform(entry.filePath) }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo generar la forma de onda.'
+      return { ok: false, error: message }
+    }
+  })
+
+  ipcMain.handle('sample:export', async (
+    _event,
+    request: SampleExportRequest
+  ): Promise<SampleExportResult> => {
+    if (
+      !request ||
+      typeof request.historyId !== 'string' ||
+      typeof request.startSeconds !== 'number' ||
+      typeof request.endSeconds !== 'number'
+    ) {
+      return { ok: false, error: 'La selección del sample no es válida.' }
+    }
+    const entry = (await listHistory()).find((item) => item.id === request.historyId)
+    if (!entry) return { ok: false, error: 'El audio ya no está en la biblioteca.' }
+    if (!SAMPLE_FORMATS.includes(request.format)) {
+      return { ok: false, error: 'El formato del sample no es válido.' }
+    }
+
+    const safeTitle = entry.media.title.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '').trim().slice(0, 80) || 'Sample'
+    const musicalInfo = entry.analysis
+      ? ` - ${entry.analysis.bpm.toFixed(1)} BPM - ${entry.analysis.key}${entry.analysis.mode === 'minor' ? 'm' : ''}`
+      : ''
+    const defaultPath = join(
+      dirname(entry.filePath),
+      `${safeTitle}${musicalInfo} - Sample.${request.format}`
+    )
+    const selected = await dialog.showSaveDialog({
+      title: 'Guardar sample',
+      defaultPath,
+      filters: [{ name: request.format.toUpperCase(), extensions: [request.format] }]
+    })
+    if (selected.canceled || !selected.filePath) return { ok: true, filePath: null }
+
+    try {
+      await exportSample(
+        entry.filePath,
+        selected.filePath,
+        request.startSeconds,
+        request.endSeconds,
+        request.format
+      )
+      return { ok: true, filePath: selected.filePath }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo exportar el sample.'
       return { ok: false, error: message }
     }
   })
