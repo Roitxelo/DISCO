@@ -3,6 +3,16 @@ import type { FormEvent } from 'react'
 import { AUDIO_FORMATS } from '../../shared/media'
 import type { AudioAnalysis, AudioFormat, HistoryEntry, MediaInfo } from '../../shared/media'
 
+const MUSICAL_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
+const CAMELOT_MAJOR = ['8B', '3B', '10B', '5B', '12B', '7B', '2B', '9B', '4B', '11B', '6B', '1B']
+const CAMELOT_MINOR = ['5A', '12A', '7A', '2A', '9A', '4A', '11A', '6A', '1A', '8A', '3A', '10A']
+
+function camelotFor(key: string, mode: AudioAnalysis['mode']): string {
+  const index = MUSICAL_KEYS.indexOf(key as (typeof MUSICAL_KEYS)[number])
+  if (index < 0) return '—'
+  return mode === 'major' ? CAMELOT_MAJOR[index] : CAMELOT_MINOR[index]
+}
+
 function formatDuration(totalSeconds: number): string {
   if (!totalSeconds) return 'Duración desconocida'
   const hours = Math.floor(totalSeconds / 3600)
@@ -33,6 +43,10 @@ function App(): React.JSX.Element {
   const [displayBpm, setDisplayBpm] = useState(0)
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisError, setAnalysisError] = useState('')
+  const [selectedKey, setSelectedKey] = useState('C')
+  const [selectedMode, setSelectedMode] = useState<AudioAnalysis['mode']>('major')
+  const [savingCorrection, setSavingCorrection] = useState(false)
+  const [correctionSaved, setCorrectionSaved] = useState(false)
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [historyError, setHistoryError] = useState('')
 
@@ -58,6 +72,7 @@ function App(): React.JSX.Element {
     setDownloadedFile('')
     setAnalysis(null)
     setAnalysisError('')
+    setCorrectionSaved(false)
 
     try {
       const result = await window.disco.analyzeUrl(url)
@@ -81,6 +96,7 @@ function App(): React.JSX.Element {
     setDownloadedFile('')
     setAnalysis(null)
     setAnalysisError('')
+    setCorrectionSaved(false)
     setError('')
 
     try {
@@ -96,6 +112,8 @@ function App(): React.JSX.Element {
         if (analysisResult.ok) {
           setAnalysis(analysisResult.analysis)
           setDisplayBpm(analysisResult.analysis.bpm)
+          setSelectedKey(analysisResult.analysis.key)
+          setSelectedMode(analysisResult.analysis.mode)
           await saveToHistory(result.filePath, analysisResult.analysis)
         } else {
           setAnalysisError(analysisResult.error)
@@ -116,6 +134,32 @@ function App(): React.JSX.Element {
     const result = await window.disco.removeHistory(id)
     if (result.ok) setHistory(result.entries)
     else setHistoryError(result.error)
+  }
+
+  async function saveCorrection(): Promise<void> {
+    if (!analysis || !downloadedFile || displayBpm < 20 || displayBpm > 300) return
+    setSavingCorrection(true)
+    setCorrectionSaved(false)
+    const corrected: AudioAnalysis = {
+      ...analysis,
+      bpm: Math.round(displayBpm * 10) / 10,
+      key: selectedKey,
+      mode: selectedMode,
+      camelot: camelotFor(selectedKey, selectedMode)
+    }
+    const result = await window.disco.updateHistoryAnalysis({
+      filePath: downloadedFile,
+      analysis: corrected
+    })
+    if (result.ok) {
+      setAnalysis(corrected)
+      setDisplayBpm(corrected.bpm)
+      setHistory(result.entries)
+      setCorrectionSaved(true)
+    } else {
+      setAnalysisError(result.error)
+    }
+    setSavingCorrection(false)
   }
 
   return (
@@ -224,19 +268,42 @@ function App(): React.JSX.Element {
                     <div className="analysis-values">
                       <article>
                         <span>BPM</span>
-                        <strong>{displayBpm.toFixed(1)}</strong>
+                        <input
+                          className="analysis-input"
+                          type="number"
+                          min="20"
+                          max="300"
+                          step="0.1"
+                          value={displayBpm}
+                          aria-label="BPM corregido"
+                          onChange={(event) => {
+                            setDisplayBpm(Number(event.target.value))
+                            setCorrectionSaved(false)
+                          }}
+                        />
                         <div className="bpm-controls">
-                          <button type="button" onClick={() => setDisplayBpm((value) => value / 2)}>÷2</button>
-                          <button type="button" onClick={() => setDisplayBpm(analysis.bpm)}>Original</button>
-                          <button type="button" onClick={() => setDisplayBpm((value) => value * 2)}>×2</button>
+                          <button type="button" onClick={() => { setDisplayBpm((value) => value / 2); setCorrectionSaved(false) }}>÷2</button>
+                          <button type="button" onClick={() => { setDisplayBpm(analysis.bpm); setCorrectionSaved(false) }}>Original</button>
+                          <button type="button" onClick={() => { setDisplayBpm((value) => value * 2); setCorrectionSaved(false) }}>×2</button>
                         </div>
                       </article>
                       <article>
                         <span>Tonalidad</span>
-                        <strong>{analysis.key} {analysis.mode === 'major' ? 'mayor' : 'menor'}</strong>
-                        <small>{analysis.camelot} · Camelot</small>
+                        <div className="key-controls">
+                          <select value={selectedKey} aria-label="Tónica" onChange={(event) => { setSelectedKey(event.target.value); setCorrectionSaved(false) }}>
+                            {MUSICAL_KEYS.map((key) => <option key={key} value={key}>{key}</option>)}
+                          </select>
+                          <select value={selectedMode} aria-label="Modo" onChange={(event) => { setSelectedMode(event.target.value as AudioAnalysis['mode']); setCorrectionSaved(false) }}>
+                            <option value="major">Mayor</option>
+                            <option value="minor">Menor</option>
+                          </select>
+                        </div>
+                        <small>{camelotFor(selectedKey, selectedMode)} · Camelot</small>
                       </article>
                     </div>
+                    <button className="save-correction" type="button" onClick={saveCorrection} disabled={savingCorrection || displayBpm < 20 || displayBpm > 300}>
+                      {savingCorrection ? 'Guardando…' : correctionSaved ? 'Corrección guardada' : 'Guardar corrección'}
+                    </button>
                   </section>
                 )}
               </div>

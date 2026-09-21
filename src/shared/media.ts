@@ -47,6 +47,11 @@ export type HistoryEntry = {
 
 export type HistorySaveRequest = Omit<HistoryEntry, 'id' | 'createdAt'>
 
+export type HistoryAnalysisUpdate = {
+  filePath: string
+  analysis: AudioAnalysis
+}
+
 export type HistoryResult =
   | { ok: true; entries: HistoryEntry[] }
   | { ok: false; error: string }

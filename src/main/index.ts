@@ -3,13 +3,19 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
 import { analyzeAudio } from './services/audioAnalysis'
-import { listHistory, removeHistoryEntry, saveHistoryEntry } from './services/history'
+import {
+  listHistory,
+  removeHistoryEntry,
+  saveHistoryEntry,
+  updateHistoryAnalysis
+} from './services/history'
 import type {
   AnalyzeResult,
   AudioAnalysisResult,
   DownloadRequest,
   DownloadResult,
   HistoryResult,
+  HistoryAnalysisUpdate,
   HistorySaveRequest
 } from '../shared/media'
 
@@ -110,6 +116,17 @@ app.whenReady().then(() => {
       return { ok: true, entries: await removeHistoryEntry(id) }
     } catch {
       return { ok: false, error: 'No se pudo eliminar la entrada del historial.' }
+    }
+  })
+
+  ipcMain.handle('history:update-analysis', async (
+    _event,
+    request: HistoryAnalysisUpdate
+  ): Promise<HistoryResult> => {
+    try {
+      return { ok: true, entries: await updateHistoryAnalysis(request) }
+    } catch {
+      return { ok: false, error: 'No se pudo guardar la corrección musical.' }
     }
   })
 

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { app } from 'electron'
-import type { HistoryEntry, HistorySaveRequest } from '../../shared/media'
+import type { HistoryAnalysisUpdate, HistoryEntry, HistorySaveRequest } from '../../shared/media'
 
 const MAX_ENTRIES = 200
 
@@ -48,6 +48,15 @@ export async function saveHistoryEntry(request: HistorySaveRequest): Promise<His
 export async function removeHistoryEntry(id: string): Promise<HistoryEntry[]> {
   const entries = await readHistory()
   const updated = entries.filter((entry) => entry.id !== id)
+  await writeHistory(updated)
+  return updated
+}
+
+export async function updateHistoryAnalysis(request: HistoryAnalysisUpdate): Promise<HistoryEntry[]> {
+  const entries = await readHistory()
+  const updated = entries.map((entry) =>
+    entry.filePath === request.filePath ? { ...entry, analysis: request.analysis } : entry
+  )
   await writeHistory(updated)
   return updated
 }

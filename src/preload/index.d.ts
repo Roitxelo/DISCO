@@ -6,6 +6,7 @@ import type {
   DownloadRequest,
   DownloadResult,
   HistoryResult,
+  HistoryAnalysisUpdate,
   HistorySaveRequest
 } from '../shared/media'
 
@@ -21,6 +22,7 @@ declare global {
       analyzeAudio: (filePath: string) => Promise<AudioAnalysisResult>
       listHistory: () => Promise<HistoryResult>
       saveHistory: (request: HistorySaveRequest) => Promise<HistoryResult>
+      updateHistoryAnalysis: (request: HistoryAnalysisUpdate) => Promise<HistoryResult>
       removeHistory: (id: string) => Promise<HistoryResult>
     }
   }

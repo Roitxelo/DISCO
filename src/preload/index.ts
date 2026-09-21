@@ -5,6 +5,7 @@ import type {
   DownloadRequest,
   DownloadResult,
   HistoryResult,
+  HistoryAnalysisUpdate,
   HistorySaveRequest
 } from '../shared/media'
 
@@ -21,5 +22,7 @@ contextBridge.exposeInMainWorld('disco', {
   listHistory: (): Promise<HistoryResult> => ipcRenderer.invoke('history:list'),
   saveHistory: (request: HistorySaveRequest): Promise<HistoryResult> =>
     ipcRenderer.invoke('history:save', request),
+  updateHistoryAnalysis: (request: HistoryAnalysisUpdate): Promise<HistoryResult> =>
+    ipcRenderer.invoke('history:update-analysis', request),
   removeHistory: (id: string): Promise<HistoryResult> => ipcRenderer.invoke('history:remove', id)
 })
