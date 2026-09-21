@@ -91,8 +91,17 @@ button:disabled { color: #77747a; background: #29282d; cursor: not-allowed; }
 .bpm-controls { display: grid; grid-template-columns: auto 1fr auto; gap: 5px; margin-top: 4px; }
 .bpm-controls button { min-height: 27px; padding: 4px 7px; color: #aaa8ae; border: 1px solid #343339; background: #1b1b1f; font-size: 10px; }
 .bpm-controls button:hover { color: #fff; background: #29282e; }
-.save-correction { width: 100%; min-height: 38px; margin-top: 9px; padding: 8px 14px; color: #d9d6da; border: 1px solid #3b3a40; background: #202025; font-size: 11px; }
-.save-correction:hover { background: #2a292f; }
+.review-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 7px; margin-top: 9px; }
+.review-actions button { min-height: 38px; padding: 8px 14px; font-size: 11px; }
+.save-correction { width: 100%; color: #17100d; background: #ff6335; }
+.save-correction:hover { background: #ff7a52; }
+.secondary-action { color: #d9d6da; border: 1px solid #3b3a40; background: #202025; }
+.secondary-action:hover { background: #2a292f; }
+.confirm-action { color: #c9f4d5; border: 1px solid #2d6642; background: #193923; }
+.confirm-action:hover { background: #224b2f; }
+.review-status { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 9px; padding: 9px 11px; color: #bcecc9; border: 1px solid #285e3c; border-radius: 8px; background: #173522; font-size: 11px; }
+.review-status.corrected { color: #ffd2c4; border-color: #74412f; background: #3b241c; }
+.review-status button { min-height: 28px; padding: 4px 9px; color: inherit; border: 1px solid currentColor; background: transparent; font-size: 10px; }
 
 .library { margin-top: 58px; padding-top: 34px; border-top: 1px solid #242428; }
 .library-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; }
@@ -108,6 +117,7 @@ button:disabled { color: #77747a; background: #29282d; cursor: not-allowed; }
 .history-copy > span { color: #77777e; font-size: 11px; }
 .history-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .history-tags span { padding: 3px 6px; color: #c3c0c5; border-radius: 5px; background: #252429; font-size: 9px; text-transform: uppercase; }
+.history-tags span.reviewed { color: #bcecc9; background: #173522; }
 .history-actions { display: flex; gap: 6px; }
 .history-actions button { min-height: 34px; padding: 7px 11px; color: #d6d3d7; border: 1px solid #3b3a40; background: #1c1c20; font-size: 11px; }
 .history-actions button:hover { background: #29282e; }

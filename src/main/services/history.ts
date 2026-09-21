@@ -14,7 +14,13 @@ async function readHistory(): Promise<HistoryEntry[]> {
   try {
     const contents = await readFile(historyPath(), 'utf8')
     const parsed: unknown = JSON.parse(contents)
-    return Array.isArray(parsed) ? (parsed as HistoryEntry[]) : []
+    if (!Array.isArray(parsed)) return []
+    return (parsed as HistoryEntry[]).map((entry) => ({
+      ...entry,
+      detectedAnalysis: entry.detectedAnalysis ?? entry.analysis,
+      analysisReview: entry.analysisReview ?? 'pending',
+      reviewedAt: entry.reviewedAt ?? null
+    }))
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
     throw error
@@ -38,7 +44,10 @@ export async function saveHistoryEntry(request: HistorySaveRequest): Promise<His
   const entry: HistoryEntry = {
     ...request,
     id: randomUUID(),
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    detectedAnalysis: request.analysis,
+    analysisReview: 'pending',
+    reviewedAt: null
   }
   const updated = [entry, ...entries].slice(0, MAX_ENTRIES)
   await writeHistory(updated)
@@ -55,7 +64,15 @@ export async function removeHistoryEntry(id: string): Promise<HistoryEntry[]> {
 export async function updateHistoryAnalysis(request: HistoryAnalysisUpdate): Promise<HistoryEntry[]> {
   const entries = await readHistory()
   const updated = entries.map((entry) =>
-    entry.filePath === request.filePath ? { ...entry, analysis: request.analysis } : entry
+    entry.filePath === request.filePath
+      ? {
+          ...entry,
+          analysis: request.analysis,
+          detectedAnalysis: entry.detectedAnalysis ?? entry.analysis,
+          analysisReview: request.review,
+          reviewedAt: new Date().toISOString()
+        }
+      : entry
   )
   await writeHistory(updated)
   return updated

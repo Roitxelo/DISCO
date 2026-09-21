@@ -43,13 +43,20 @@ export type HistoryEntry = {
   format: AudioFormat
   filePath: string
   analysis: AudioAnalysis | null
+  detectedAnalysis: AudioAnalysis | null
+  analysisReview: 'pending' | 'confirmed' | 'corrected'
+  reviewedAt: string | null
 }
 
-export type HistorySaveRequest = Omit<HistoryEntry, 'id' | 'createdAt'>
+export type HistorySaveRequest = Omit<
+  HistoryEntry,
+  'id' | 'createdAt' | 'detectedAnalysis' | 'analysisReview' | 'reviewedAt'
+>
 
 export type HistoryAnalysisUpdate = {
   filePath: string
   analysis: AudioAnalysis
+  review: 'confirmed' | 'corrected'
 }
 
 export type HistoryResult =

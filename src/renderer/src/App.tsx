@@ -47,6 +47,8 @@ function App(): React.JSX.Element {
   const [selectedMode, setSelectedMode] = useState<AudioAnalysis['mode']>('major')
   const [savingCorrection, setSavingCorrection] = useState(false)
   const [correctionSaved, setCorrectionSaved] = useState(false)
+  const [editingAnalysis, setEditingAnalysis] = useState(false)
+  const [analysisReview, setAnalysisReview] = useState<'pending' | 'confirmed' | 'corrected'>('pending')
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [historyError, setHistoryError] = useState('')
 
@@ -73,6 +75,8 @@ function App(): React.JSX.Element {
     setAnalysis(null)
     setAnalysisError('')
     setCorrectionSaved(false)
+    setEditingAnalysis(false)
+    setAnalysisReview('pending')
 
     try {
       const result = await window.disco.analyzeUrl(url)
@@ -97,6 +101,8 @@ function App(): React.JSX.Element {
     setAnalysis(null)
     setAnalysisError('')
     setCorrectionSaved(false)
+    setEditingAnalysis(false)
+    setAnalysisReview('pending')
     setError('')
 
     try {
@@ -149,13 +155,33 @@ function App(): React.JSX.Element {
     }
     const result = await window.disco.updateHistoryAnalysis({
       filePath: downloadedFile,
-      analysis: corrected
+      analysis: corrected,
+      review: 'corrected'
     })
     if (result.ok) {
       setAnalysis(corrected)
       setDisplayBpm(corrected.bpm)
       setHistory(result.entries)
       setCorrectionSaved(true)
+      setEditingAnalysis(false)
+      setAnalysisReview('corrected')
+    } else {
+      setAnalysisError(result.error)
+    }
+    setSavingCorrection(false)
+  }
+
+  async function confirmAnalysis(): Promise<void> {
+    if (!analysis || !downloadedFile) return
+    setSavingCorrection(true)
+    const result = await window.disco.updateHistoryAnalysis({
+      filePath: downloadedFile,
+      analysis,
+      review: 'confirmed'
+    })
+    if (result.ok) {
+      setHistory(result.entries)
+      setAnalysisReview('confirmed')
     } else {
       setAnalysisError(result.error)
     }
@@ -268,42 +294,63 @@ function App(): React.JSX.Element {
                     <div className="analysis-values">
                       <article>
                         <span>BPM</span>
-                        <input
-                          className="analysis-input"
-                          type="number"
-                          min="20"
-                          max="300"
-                          step="0.1"
-                          value={displayBpm}
-                          aria-label="BPM corregido"
-                          onChange={(event) => {
-                            setDisplayBpm(Number(event.target.value))
-                            setCorrectionSaved(false)
-                          }}
-                        />
-                        <div className="bpm-controls">
-                          <button type="button" onClick={() => { setDisplayBpm((value) => value / 2); setCorrectionSaved(false) }}>÷2</button>
-                          <button type="button" onClick={() => { setDisplayBpm(analysis.bpm); setCorrectionSaved(false) }}>Original</button>
-                          <button type="button" onClick={() => { setDisplayBpm((value) => value * 2); setCorrectionSaved(false) }}>×2</button>
-                        </div>
+                        {editingAnalysis ? (
+                          <>
+                            <input
+                              className="analysis-input"
+                              type="number"
+                              min="20"
+                              max="300"
+                              step="0.1"
+                              value={displayBpm}
+                              aria-label="BPM corregido"
+                              onChange={(event) => {
+                                setDisplayBpm(Number(event.target.value))
+                                setCorrectionSaved(false)
+                              }}
+                            />
+                            <div className="bpm-controls">
+                              <button type="button" onClick={() => { setDisplayBpm((value) => value / 2); setCorrectionSaved(false) }}>÷2</button>
+                              <button type="button" onClick={() => { setDisplayBpm(analysis.bpm); setCorrectionSaved(false) }}>Original</button>
+                              <button type="button" onClick={() => { setDisplayBpm((value) => value * 2); setCorrectionSaved(false) }}>×2</button>
+                            </div>
+                          </>
+                        ) : <strong>{analysis.bpm.toFixed(1)}</strong>}
                       </article>
                       <article>
                         <span>Tonalidad</span>
-                        <div className="key-controls">
-                          <select value={selectedKey} aria-label="Tónica" onChange={(event) => { setSelectedKey(event.target.value); setCorrectionSaved(false) }}>
-                            {MUSICAL_KEYS.map((key) => <option key={key} value={key}>{key}</option>)}
-                          </select>
-                          <select value={selectedMode} aria-label="Modo" onChange={(event) => { setSelectedMode(event.target.value as AudioAnalysis['mode']); setCorrectionSaved(false) }}>
-                            <option value="major">Mayor</option>
-                            <option value="minor">Menor</option>
-                          </select>
-                        </div>
-                        <small>{camelotFor(selectedKey, selectedMode)} · Camelot</small>
+                        {editingAnalysis ? (
+                          <div className="key-controls">
+                            <select value={selectedKey} aria-label="Tónica" onChange={(event) => { setSelectedKey(event.target.value); setCorrectionSaved(false) }}>
+                              {MUSICAL_KEYS.map((key) => <option key={key} value={key}>{key}</option>)}
+                            </select>
+                            <select value={selectedMode} aria-label="Modo" onChange={(event) => { setSelectedMode(event.target.value as AudioAnalysis['mode']); setCorrectionSaved(false) }}>
+                              <option value="major">Mayor</option>
+                              <option value="minor">Menor</option>
+                            </select>
+                          </div>
+                        ) : <strong>{analysis.key} {analysis.mode === 'major' ? 'mayor' : 'menor'}</strong>}
+                        <small>{editingAnalysis ? camelotFor(selectedKey, selectedMode) : analysis.camelot} · Camelot</small>
                       </article>
                     </div>
-                    <button className="save-correction" type="button" onClick={saveCorrection} disabled={savingCorrection || displayBpm < 20 || displayBpm > 300}>
-                      {savingCorrection ? 'Guardando…' : correctionSaved ? 'Corrección guardada' : 'Guardar corrección'}
-                    </button>
+                    {editingAnalysis ? (
+                      <div className="review-actions">
+                        <button className="secondary-action" type="button" onClick={() => setEditingAnalysis(false)}>Cancelar</button>
+                        <button className="save-correction" type="button" onClick={saveCorrection} disabled={savingCorrection || displayBpm < 20 || displayBpm > 300}>
+                          {savingCorrection ? 'Guardando…' : correctionSaved ? 'Corrección guardada' : 'Guardar corrección'}
+                        </button>
+                      </div>
+                    ) : analysisReview === 'pending' ? (
+                      <div className="review-actions">
+                        <button className="secondary-action" type="button" onClick={() => setEditingAnalysis(true)}>Corregir</button>
+                        <button className="confirm-action" type="button" onClick={confirmAnalysis} disabled={savingCorrection}>Datos correctos</button>
+                      </div>
+                    ) : (
+                      <div className={`review-status ${analysisReview}`}>
+                        {analysisReview === 'confirmed' ? 'Datos confirmados' : 'Corrección guardada'}
+                        <button type="button" onClick={() => setEditingAnalysis(true)}>Editar</button>
+                      </div>
+                    )}
                   </section>
                 )}
               </div>
@@ -343,6 +390,8 @@ function App(): React.JSX.Element {
                       {entry.analysis && <span>{entry.analysis.bpm.toFixed(1)} BPM</span>}
                       {entry.analysis && <span>{entry.analysis.key} {entry.analysis.mode === 'major' ? 'mayor' : 'menor'}</span>}
                       {entry.analysis && <span>{entry.analysis.camelot}</span>}
+                      {entry.analysisReview === 'confirmed' && <span className="reviewed">Confirmado</span>}
+                      {entry.analysisReview === 'corrected' && <span className="reviewed">Corregido</span>}
                     </div>
                   </div>
                   <div className="history-actions">
