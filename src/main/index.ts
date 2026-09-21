@@ -6,6 +6,7 @@ import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
 import { analyzeAudio } from './services/audioAnalysis'
+import { generateWaveform } from './services/waveform'
 import {
   listHistory,
   removeHistoryEntry,
@@ -20,7 +21,8 @@ import type {
   DownloadResult,
   HistoryResult,
   HistoryAnalysisUpdate,
-  HistorySaveRequest
+  HistorySaveRequest,
+  WaveformResult
 } from '../shared/media'
 
 protocol.registerSchemesAsPrivileged([
@@ -206,6 +208,18 @@ app.whenReady().then(() => {
       return { ok: true, url: `disco-audio://history/${encodeURIComponent(id)}` }
     } catch {
       return { ok: false, error: 'No se encuentra el archivo. Puede que se haya movido o eliminado.' }
+    }
+  })
+
+  ipcMain.handle('history:waveform', async (_event, id: unknown): Promise<WaveformResult> => {
+    if (typeof id !== 'string') return { ok: false, error: 'La entrada no es válida.' }
+    const entry = (await listHistory()).find((item) => item.id === id)
+    if (!entry) return { ok: false, error: 'El audio ya no está en la biblioteca.' }
+    try {
+      return { ok: true, imageUrl: await generateWaveform(entry.filePath) }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo generar la forma de onda.'
+      return { ok: false, error: message }
     }
   })
 

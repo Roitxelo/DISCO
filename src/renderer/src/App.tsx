@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { AUDIO_FORMATS } from '../../shared/media'
 import type { AudioAnalysis, AudioFormat, HistoryEntry, MediaInfo } from '../../shared/media'
@@ -30,6 +30,13 @@ function formatDate(value: string): string {
   }).format(new Date(value))
 }
 
+function formatTimestamp(seconds: number): string {
+  if (!Number.isFinite(seconds)) return '0:00.0'
+  const minutes = Math.floor(seconds / 60)
+  const remaining = (seconds % 60).toFixed(1).padStart(4, '0')
+  return `${minutes}:${remaining}`
+}
+
 function App(): React.JSX.Element {
   const [url, setUrl] = useState('')
   const [media, setMedia] = useState<MediaInfo | null>(null)
@@ -53,6 +60,13 @@ function App(): React.JSX.Element {
   const [historyError, setHistoryError] = useState('')
   const [playingEntryId, setPlayingEntryId] = useState('')
   const [audioSource, setAudioSource] = useState('')
+  const [waveformUrl, setWaveformUrl] = useState('')
+  const [waveformLoading, setWaveformLoading] = useState(false)
+  const [audioDuration, setAudioDuration] = useState(0)
+  const [selectionStart, setSelectionStart] = useState(0)
+  const [selectionEnd, setSelectionEnd] = useState(0)
+  const [loopSelection, setLoopSelection] = useState(true)
+  const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
     void window.disco.listHistory().then((result) => {
@@ -145,6 +159,7 @@ function App(): React.JSX.Element {
       if (playingEntryId === id) {
         setPlayingEntryId('')
         setAudioSource('')
+        setWaveformUrl('')
       }
     }
     else setHistoryError(result.error)
@@ -155,14 +170,42 @@ function App(): React.JSX.Element {
     if (playingEntryId === id) {
       setPlayingEntryId('')
       setAudioSource('')
+      setWaveformUrl('')
       return
     }
     const result = await window.disco.getAudioSource(id)
     if (result.ok) {
       setPlayingEntryId(id)
       setAudioSource(result.url)
+      setWaveformUrl('')
+      setAudioDuration(0)
+      setSelectionStart(0)
+      setSelectionEnd(0)
+      setWaveformLoading(true)
+      const waveform = await window.disco.getWaveform(id)
+      if (waveform.ok) setWaveformUrl(waveform.imageUrl)
+      else setHistoryError(waveform.error)
+      setWaveformLoading(false)
     } else {
       setHistoryError(result.error)
+    }
+  }
+
+  function playSelection(): void {
+    const player = audioRef.current
+    if (!player) return
+    player.currentTime = selectionStart
+    void player.play()
+  }
+
+  function keepPlaybackInsideSelection(): void {
+    const player = audioRef.current
+    if (!player || selectionEnd <= selectionStart || player.currentTime < selectionEnd) return
+    if (loopSelection) {
+      player.currentTime = selectionStart
+      void player.play()
+    } else {
+      player.pause()
     }
   }
 
@@ -427,11 +470,70 @@ function App(): React.JSX.Element {
                   </div>
                   {playingEntryId === entry.id && audioSource && (
                     <div className="history-player">
+                      <div className="waveform-panel">
+                        {waveformLoading && <div className="waveform-loading">Generando forma de onda…</div>}
+                        {waveformUrl && (
+                          <div className="waveform-view">
+                            <img src={waveformUrl} alt="Forma de onda del audio" />
+                            {audioDuration > 0 && (
+                              <div
+                                className="waveform-selection"
+                                style={{
+                                  left: `${(selectionStart / audioDuration) * 100}%`,
+                                  width: `${((selectionEnd - selectionStart) / audioDuration) * 100}%`
+                                }}
+                              />
+                            )}
+                          </div>
+                        )}
+                        {audioDuration > 0 && (
+                          <div className="selection-controls">
+                            <label>
+                              <span>Inicio · {formatTimestamp(selectionStart)}</span>
+                              <input
+                                type="range"
+                                min="0"
+                                max={audioDuration}
+                                step="0.01"
+                                value={selectionStart}
+                                onChange={(event) => setSelectionStart(Math.min(Number(event.target.value), selectionEnd - 0.05))}
+                              />
+                            </label>
+                            <label>
+                              <span>Final · {formatTimestamp(selectionEnd)}</span>
+                              <input
+                                type="range"
+                                min="0"
+                                max={audioDuration}
+                                step="0.01"
+                                value={selectionEnd}
+                                onChange={(event) => setSelectionEnd(Math.max(Number(event.target.value), selectionStart + 0.05))}
+                              />
+                            </label>
+                            <div className="selection-actions">
+                              <button type="button" onClick={playSelection}>Reproducir selección</button>
+                              <label className="loop-option">
+                                <input type="checkbox" checked={loopSelection} onChange={(event) => setLoopSelection(event.target.checked)} />
+                                Repetir
+                              </label>
+                              <span>{formatTimestamp(selectionEnd - selectionStart)}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                       <audio
+                        ref={audioRef}
                         src={audioSource}
                         controls
                         autoPlay
                         preload="metadata"
+                        onLoadedMetadata={(event) => {
+                          const duration = event.currentTarget.duration
+                          setAudioDuration(duration)
+                          setSelectionStart(0)
+                          setSelectionEnd(duration)
+                        }}
+                        onTimeUpdate={keepPlaybackInsideSelection}
                         onError={() => setHistoryError('No se pudo reproducir este archivo.')}
                       >
                         Tu sistema no permite reproducir este formato de audio.

@@ -8,7 +8,8 @@ import type {
   DownloadResult,
   HistoryResult,
   HistoryAnalysisUpdate,
-  HistorySaveRequest
+  HistorySaveRequest,
+  WaveformResult
 } from '../shared/media'
 
 declare global {
@@ -25,6 +26,7 @@ declare global {
       saveHistory: (request: HistorySaveRequest) => Promise<HistoryResult>
       updateHistoryAnalysis: (request: HistoryAnalysisUpdate) => Promise<HistoryResult>
       getAudioSource: (id: string) => Promise<AudioSourceResult>
+      getWaveform: (id: string) => Promise<WaveformResult>
       removeHistory: (id: string) => Promise<HistoryResult>
     }
   }

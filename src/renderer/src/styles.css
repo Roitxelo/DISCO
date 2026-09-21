@@ -125,6 +125,19 @@ button:disabled { color: #77747a; background: #29282d; cursor: not-allowed; }
 .history-actions .remove-button { color: #a09da2; border-color: transparent; background: transparent; }
 .history-player { grid-column: 1 / -1; padding: 9px 10px 5px; border-top: 1px solid #29282d; }
 .history-player audio { display: block; width: 100%; height: 38px; accent-color: #ff6335; }
+.waveform-panel { display: grid; gap: 10px; margin-bottom: 10px; }
+.waveform-loading { display: grid; min-height: 112px; place-items: center; color: #85838a; border-radius: 8px; background: #0d0d10; font-size: 11px; }
+.waveform-view { position: relative; height: 120px; overflow: hidden; border: 1px solid #302f34; border-radius: 8px; background: #0d0d10; }
+.waveform-view img { width: 100%; height: 100%; opacity: .42; object-fit: fill; }
+.waveform-selection { position: absolute; top: 0; bottom: 0; min-width: 2px; border-inline: 1px solid #ff8a67; background: rgba(255, 99, 53, .22); pointer-events: none; }
+.selection-controls { display: grid; gap: 8px; }
+.selection-controls > label { display: grid; grid-template-columns: 105px 1fr; align-items: center; gap: 10px; margin: 0; color: #9a989f; font-size: 10px; }
+.selection-controls input[type="range"] { padding: 0; accent-color: #ff6335; }
+.selection-actions { display: flex; align-items: center; gap: 12px; }
+.selection-actions > button { min-height: 34px; padding: 6px 12px; color: #ffd4c7; border: 1px solid #75432f; background: #3a241c; font-size: 10px; }
+.selection-actions > span { margin-left: auto; color: #ff8a67; font-size: 11px; font-variant-numeric: tabular-nums; }
+.selection-actions .loop-option { display: flex; align-items: center; gap: 6px; margin: 0; color: #aaa8ae; font-size: 10px; }
+.selection-actions .loop-option input { width: 14px; height: 14px; padding: 0; accent-color: #ff6335; }
 
 .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 28px; overflow: hidden; border: 1px solid #242428; border-radius: 14px; background: #242428; }
 .features article { display: grid; gap: 7px; padding: 22px; background: #111114; }

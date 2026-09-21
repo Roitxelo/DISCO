@@ -66,3 +66,7 @@ export type HistoryResult =
 export type AudioSourceResult =
   | { ok: true; url: string }
   | { ok: false; error: string }
+
+export type WaveformResult =
+  | { ok: true; imageUrl: string }
+  | { ok: false; error: string }
