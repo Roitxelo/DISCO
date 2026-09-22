@@ -79,6 +79,7 @@ button:disabled { color: #77747a; background: #29282d; cursor: not-allowed; }
   box-shadow: 0 18px 48px rgba(0, 0, 0, .14);
 }
 .media-card img { width: 100%; height: 100%; min-height: 230px; object-fit: cover; }
+.media-placeholder { min-height: 230px; background: linear-gradient(135deg, #1c1d23, #111217); }
 .media-copy { display: flex; flex-direction: column; justify-content: center; padding: 28px; }
 .media-source { color: #ff7046; font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
 .media-copy h2 { margin: 10px 0 6px; font-size: clamp(25px, 4vw, 38px); line-height: 1.05; letter-spacing: -.035em; }
@@ -546,6 +547,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   outline-offset: 3px;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .001ms !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
+}
+
+@media (max-width: 1050px) {
+  .app-main .hero { width: min(100% - 44px, 980px); }
+  .media-card { grid-template-columns: minmax(190px, 32%) 1fr; }
+  .history-entry { grid-template-columns: 88px minmax(0, 1fr) auto; }
+  .history-entry > img, .history-placeholder { width: 88px; }
+  .format-file-actions { flex-wrap: wrap; justify-content: flex-end; }
+}
+
 @media (max-width: 850px) {
   .app-shell { grid-template-columns: 78px minmax(0, 1fr); }
   .sidebar { padding-inline: 9px; }
@@ -558,6 +571,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .current-work button { min-height: 42px; padding: 5px; font-size: 0; }
   .current-work button:first-child::after { content: '→'; font-size: 18px; }
   .current-work button.finish-work { display: none; }
+  .sidebar-settings { justify-content: center; padding: 0; font-size: 0; }
+  .sidebar-settings span { width: auto; font-size: 14px; }
+  .app-main .topbar { padding-inline: 28px; }
+  .media-card { grid-template-columns: 1fr; }
+  .media-card > img, .media-placeholder { width: 100%; height: min(230px, 32vw); }
 }
 
 @media (max-width: 620px) {
