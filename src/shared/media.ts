@@ -34,10 +34,18 @@ export type DownloadProgress = {
 
 export type AudioAnalysis = {
   bpm: number
+  bpmConfidence?: number
+  bpmAlternatives?: number[]
   key: string
   mode: 'major' | 'minor'
   camelot: string
   keyConfidence: number
+  keyAlternatives?: Array<{
+    key: string
+    mode: 'major' | 'minor'
+    camelot: string
+  }>
+  algorithmVersion?: number
 }
 
 export type AudioAnalysisResult =

@@ -1013,8 +1013,8 @@ function App(): React.JSX.Element {
                 {analysis && (
                   <section className="analysis-results" aria-label="Análisis musical estimado">
                     <div className="analysis-heading">
-                      <span>Análisis estimado</span>
-                      <small>Confianza tonal: {analysis.keyConfidence}%</small>
+                      <span>Análisis estimado · motor v{analysis.algorithmVersion ?? 1}</span>
+                      <small>Confianza: BPM {analysis.bpmConfidence ?? '—'}% · tono {analysis.keyConfidence}%</small>
                     </div>
                     <div className="analysis-values">
                       <article>
@@ -1058,6 +1058,15 @@ function App(): React.JSX.Element {
                         <small>{editingAnalysis ? camelotFor(selectedKey, selectedMode) : analysis.camelot} · Camelot</small>
                       </article>
                     </div>
+                    {((analysis.bpmAlternatives?.length ?? 0) > 0 || (analysis.keyAlternatives?.length ?? 0) > 0) && (
+                      <details className="analysis-alternatives">
+                        <summary>Ver alternativas</summary>
+                        <div>
+                          {(analysis.bpmAlternatives?.length ?? 0) > 0 && <section><span>BPM posibles</span><div>{analysis.bpmAlternatives!.map((candidate) => <button type="button" key={candidate} onClick={() => { setDisplayBpm(candidate); setEditingAnalysis(true); setCorrectionSaved(false) }}>{candidate.toFixed(1)}</button>)}</div></section>}
+                          {(analysis.keyAlternatives?.length ?? 0) > 0 && <section><span>Tonos posibles</span><div>{analysis.keyAlternatives!.map((candidate) => <button type="button" key={`${candidate.key}-${candidate.mode}`} onClick={() => { setSelectedKey(candidate.key); setSelectedMode(candidate.mode); setEditingAnalysis(true); setCorrectionSaved(false) }}>{candidate.key} {candidate.mode === 'major' ? 'mayor' : 'menor'} · {candidate.camelot}</button>)}</div></section>}
+                        </div>
+                      </details>
+                    )}
                     {editingAnalysis ? (
                       <div className="review-actions">
                         <button className="secondary-action" type="button" onClick={() => setEditingAnalysis(false)}>Cancelar</button>
@@ -1111,7 +1120,11 @@ function App(): React.JSX.Element {
                 <p>
                   {evaluation.confirmed} aciertos confirmados · {evaluation.corrected} correcciones
                   {evaluation.halfDoubleErrors > 0 && ` · ${evaluation.halfDoubleErrors} errores de mitad/doble tempo`}
+                  {evaluation.relativeKeyErrors > 0 && ` · ${evaluation.relativeKeyErrors} confusiones de tonalidad relativa`}
                 </p>
+                <p>Cobertura con alternativas: {evaluation.bpmCandidateAccuracy}% BPM · {evaluation.keyCandidateAccuracy}% tonalidad</p>
+                {evaluation.legacy.reviewed > 0 && evaluation.current.reviewed > 0 && <p>Comparativa: v1 ({evaluation.legacy.reviewed}) {evaluation.legacy.bpmAccuracy}% BPM / {evaluation.legacy.fullKeyAccuracy}% tono · v2 ({evaluation.current.reviewed}) {evaluation.current.bpmAccuracy}% BPM / {evaluation.current.fullKeyAccuracy}% tono</p>}
+                {evaluation.lowConfidenceReviews > 0 && <small>{evaluation.lowConfidenceReviews} análisis revisados tenían confianza baja; son los casos más útiles para seguir afinando.</small>}
                 {evaluation.reviewed < 10 && <small>La muestra todavía es pequeña; necesitaremos al menos 10–20 revisiones para extraer conclusiones.</small>}
               </div>
             )}

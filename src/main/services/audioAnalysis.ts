@@ -55,7 +55,7 @@ function correlation(values: number[], lag: number): number {
   return product / Math.sqrt(leftEnergy * rightEnergy + 1e-12)
 }
 
-function estimateBpm(samples: Float32Array): number {
+function estimateBpm(samples: Float32Array): Pick<AudioAnalysis, 'bpm' | 'bpmConfidence' | 'bpmAlternatives'> {
   const hopSize = 256
   const envelope: number[] = []
   let previousEnergy = 0
@@ -71,27 +71,49 @@ function estimateBpm(samples: Float32Array): number {
   const mean = envelope.reduce((sum, value) => sum + value, 0) / Math.max(1, envelope.length)
   const centered = envelope.map((value) => Math.max(0, value - mean * 0.65))
   const envelopeRate = SAMPLE_RATE / hopSize
-  let bestLag = Math.round((60 * envelopeRate) / 120)
-  let bestScore = Number.NEGATIVE_INFINITY
-
   const minimumLag = Math.floor((60 * envelopeRate) / 190)
   const maximumLag = Math.ceil((60 * envelopeRate) / 65)
   const scores = new Map<number, number>()
   for (let lag = minimumLag; lag <= maximumLag; lag += 1) {
-    const score = correlation(centered, lag) + correlation(centered, lag * 2) * 0.35
+    const doubleLag = lag * 2 < centered.length ? correlation(centered, lag * 2) : 0
+    const halfLag = Math.round(lag / 2) >= minimumLag ? correlation(centered, Math.round(lag / 2)) : 0
+    const bpm = (60 * envelopeRate) / lag
+    const tempoPrior = 1 - Math.min(1, Math.abs(bpm - 120) / 120) * 0.025
+    const score = (correlation(centered, lag) + doubleLag * 0.35 + halfLag * 0.12) * tempoPrior
     scores.set(lag, score)
-    if (score > bestScore) {
-      bestScore = score
-      bestLag = lag
-    }
   }
 
-  const previous = scores.get(bestLag - 1) ?? bestScore
-  const next = scores.get(bestLag + 1) ?? bestScore
-  const denominator = previous - 2 * bestScore + next
-  const offset = Math.abs(denominator) > 1e-9 ? 0.5 * (previous - next) / denominator : 0
-  const refinedLag = bestLag + Math.max(-0.5, Math.min(0.5, offset))
-  return Math.round(((60 * envelopeRate) / refinedLag) * 10) / 10
+  const peaks = [...scores.entries()]
+    .filter(([lag, score]) => score >= (scores.get(lag - 1) ?? score) && score >= (scores.get(lag + 1) ?? score))
+    .sort((a, b) => b[1] - a[1])
+
+  const candidates: Array<{ bpm: number; score: number }> = []
+  for (const [lag, score] of peaks) {
+    const previous = scores.get(lag - 1) ?? score
+    const next = scores.get(lag + 1) ?? score
+    const denominator = previous - 2 * score + next
+    const offset = Math.abs(denominator) > 1e-9 ? 0.5 * (previous - next) / denominator : 0
+    const refinedLag = lag + Math.max(-0.5, Math.min(0.5, offset))
+    const bpm = Math.round(((60 * envelopeRate) / refinedLag) * 10) / 10
+    if (!candidates.some((candidate) => Math.abs(candidate.bpm - bpm) < 2)) candidates.push({ bpm, score })
+    if (candidates.length === 4) break
+  }
+
+  const best = candidates[0] ?? { bpm: 120, score: 0 }
+  const second = candidates[1]
+  const confidence = second
+    ? Math.max(0, Math.min(100, ((best.score - second.score) / Math.max(Math.abs(best.score), 0.05)) * 180))
+    : 100
+  const alternatives = candidates.slice(1).map((candidate) => candidate.bpm)
+  for (const related of [best.bpm / 2, best.bpm * 2]) {
+    const rounded = Math.round(related * 10) / 10
+    if (rounded >= 65 && rounded <= 190 && !alternatives.some((value) => Math.abs(value - rounded) < 1)) alternatives.push(rounded)
+  }
+  return {
+    bpm: best.bpm,
+    bpmConfidence: Math.round(confidence),
+    bpmAlternatives: alternatives.slice(0, 3)
+  }
 }
 
 function pearson(values: number[], profile: number[], tonic: number): number {
@@ -112,19 +134,27 @@ function pearson(values: number[], profile: number[], tonic: number): number {
   return numerator / Math.sqrt(valuesEnergy * profileEnergy + 1e-12)
 }
 
-function estimateKey(samples: Float32Array): Pick<AudioAnalysis, 'key' | 'mode' | 'camelot' | 'keyConfidence'> {
+function estimateKey(samples: Float32Array): Pick<AudioAnalysis, 'key' | 'mode' | 'camelot' | 'keyConfidence' | 'keyAlternatives'> {
   Meyda.sampleRate = SAMPLE_RATE
   Meyda.bufferSize = FRAME_SIZE
   Meyda.windowingFunction = 'hanning'
   const accumulated = Array<number>(12).fill(0)
+  const segmentChromas: number[][] = []
 
   for (let start = 0; start + FRAME_SIZE <= samples.length; start += FRAME_SIZE * 4) {
     const frame = samples.slice(start, start + FRAME_SIZE)
     const features = Meyda.extract(['chroma', 'rms'], frame)
     if (!features?.chroma || !features.rms || features.rms < 0.005) continue
-    for (let note = 0; note < 12; note += 1) accumulated[note] += features.chroma[note] * features.rms
+    const segmentIndex = Math.floor(start / (SAMPLE_RATE * 15))
+    segmentChromas[segmentIndex] ??= Array<number>(12).fill(0)
+    for (let note = 0; note < 12; note += 1) {
+      const weighted = features.chroma[note] * features.rms
+      accumulated[note] += weighted
+      segmentChromas[segmentIndex][note] += weighted
+    }
   }
 
+  const validSegments = segmentChromas.filter((chroma) => chroma !== undefined)
   const candidates: Array<{ tonic: number; mode: 'major' | 'minor'; score: number }> = []
   for (let tonic = 0; tonic < 12; tonic += 1) {
     const maximumChroma = Math.max(...accumulated, 1e-12)
@@ -132,15 +162,21 @@ function estimateKey(samples: Float32Array): Pick<AudioAnalysis, 'key' | 'mode' 
     const majorThirdEvidence = accumulated[(tonic + 4) % 12] / maximumChroma
     const minorThirdEvidence = accumulated[(tonic + 3) % 12] / maximumChroma
     const fifthEvidence = accumulated[(tonic + 7) % 12] / maximumChroma
+    const majorSegmentScore = validSegments.length
+      ? validSegments.reduce((sum, chroma) => sum + pearson(chroma, MAJOR_PROFILE, tonic), 0) / validSegments.length
+      : 0
+    const minorSegmentScore = validSegments.length
+      ? validSegments.reduce((sum, chroma) => sum + pearson(chroma, MINOR_PROFILE, tonic), 0) / validSegments.length
+      : 0
     candidates.push({
       tonic,
       mode: 'major',
-      score: pearson(accumulated, MAJOR_PROFILE, tonic) + rootEvidence * 0.18 + majorThirdEvidence * 0.05 + fifthEvidence * 0.04
+      score: pearson(accumulated, MAJOR_PROFILE, tonic) + majorSegmentScore * 0.12 + rootEvidence * 0.2 + majorThirdEvidence * 0.08 + fifthEvidence * 0.04 - minorThirdEvidence * 0.025
     })
     candidates.push({
       tonic,
       mode: 'minor',
-      score: pearson(accumulated, MINOR_PROFILE, tonic) + rootEvidence * 0.18 + minorThirdEvidence * 0.05 + fifthEvidence * 0.04
+      score: pearson(accumulated, MINOR_PROFILE, tonic) + minorSegmentScore * 0.12 + rootEvidence * 0.2 + minorThirdEvidence * 0.08 + fifthEvidence * 0.04 - majorThirdEvidence * 0.025
     })
   }
   candidates.sort((a, b) => b.score - a.score)
@@ -152,7 +188,12 @@ function estimateKey(samples: Float32Array): Pick<AudioAnalysis, 'key' | 'mode' 
     key: NOTE_NAMES[best.tonic],
     mode: best.mode,
     camelot: best.mode === 'major' ? CAMELOT_MAJOR[best.tonic] : CAMELOT_MINOR[best.tonic],
-    keyConfidence: Math.round(confidence)
+    keyConfidence: Math.round(confidence),
+    keyAlternatives: candidates.slice(1, 4).map((candidate) => ({
+      key: NOTE_NAMES[candidate.tonic],
+      mode: candidate.mode,
+      camelot: candidate.mode === 'major' ? CAMELOT_MAJOR[candidate.tonic] : CAMELOT_MINOR[candidate.tonic]
+    }))
   }
 }
 
@@ -164,7 +205,8 @@ export async function analyzeAudio(filePath: string): Promise<AudioAnalysis> {
   if (samples.length < SAMPLE_RATE * 5) throw new Error('El audio es demasiado corto para analizarlo.')
 
   return {
-    bpm: estimateBpm(samples),
-    ...estimateKey(samples)
+    ...estimateBpm(samples),
+    ...estimateKey(samples),
+    algorithmVersion: 2
   }
 }
