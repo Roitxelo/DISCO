@@ -6,6 +6,7 @@ import { evaluateAnalysis } from './analysisEvaluation'
 import { Sidebar, Topbar } from './components/AppChrome'
 import type { AppView } from './components/AppChrome'
 import { DownloadView } from './views/DownloadView'
+import { IdentifyView } from './views/IdentifyView'
 
 type AppSettings = {
   directory: string
@@ -980,127 +981,7 @@ function App(): React.JSX.Element {
       <section className="hero">
         {view === 'download' && <DownloadView url={url} media={media} format={format} directory={directory} loading={loading} downloading={downloading} analyzing={analyzing} error={error} progress={downloadProgress} onUrlChange={setUrl} onFormatChange={setFormat} onAnalyze={analyze} onSelectFolder={() => void selectFolder()} onDownload={() => void download()} onCancel={() => void cancelDownload()} />}
 
-        {view === 'identify' && media && downloadedFile && (
-          <article className="media-card">
-            {media.thumbnailUrl && <img src={media.thumbnailUrl} alt="" />}
-            <div className="media-copy">
-              <span className="media-source">YouTube · {formatDuration(media.durationSeconds)}</span>
-              <h2>{media.title}</h2>
-              <p>{media.channel}</p>
-              <div className="export-panel">
-                <fieldset className="identification-format">
-                  <legend>Formato</legend>
-                  <div className="format-options">
-                    {AUDIO_FORMATS.map((audioFormat) => (
-                      <label key={audioFormat} className={format === audioFormat ? 'selected' : ''}>
-                        <input
-                          type="radio"
-                          name="format"
-                          value={audioFormat}
-                          checked={format === audioFormat}
-                          onChange={() => setFormat(audioFormat)}
-                          disabled={downloading}
-                        />
-                        {audioFormat.toUpperCase()}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-
-                {downloadedFile && (
-                  <button
-                    className="success-button"
-                    type="button"
-                    onClick={() => window.disco.revealFile(downloadedFile)}
-                  >
-                    Descarga terminada · Mostrar archivo
-                  </button>
-                )}
-
-                {analyzing && <p className="analysis-status" role="status">Detectando BPM y tonalidad…</p>}
-                {analysisError && <p className="error" role="alert">{analysisError}</p>}
-
-                {analysis && (
-                  <section className="analysis-results" aria-label="Análisis musical estimado">
-                    <div className="analysis-heading">
-                      <span>Análisis estimado · motor v{analysis.algorithmVersion ?? 1}</span>
-                      <small>Confianza: BPM {analysis.bpmConfidence ?? '—'}% · tono {analysis.keyConfidence}%</small>
-                    </div>
-                    <div className="analysis-values">
-                      <article>
-                        <span>BPM</span>
-                        {editingAnalysis ? (
-                          <>
-                            <input
-                              className="analysis-input"
-                              type="number"
-                              min="20"
-                              max="300"
-                              step="0.1"
-                              value={displayBpm}
-                              aria-label="BPM corregido"
-                              onChange={(event) => {
-                                setDisplayBpm(Number(event.target.value))
-                                setCorrectionSaved(false)
-                              }}
-                            />
-                            <div className="bpm-controls">
-                              <button type="button" onClick={() => { setDisplayBpm((value) => value / 2); setCorrectionSaved(false) }}>÷2</button>
-                              <button type="button" onClick={() => { setDisplayBpm(analysis.bpm); setCorrectionSaved(false) }}>Original</button>
-                              <button type="button" onClick={() => { setDisplayBpm((value) => value * 2); setCorrectionSaved(false) }}>×2</button>
-                            </div>
-                          </>
-                        ) : <strong>{analysis.bpm.toFixed(1)}</strong>}
-                      </article>
-                      <article>
-                        <span>Tonalidad</span>
-                        {editingAnalysis ? (
-                          <div className="key-controls">
-                            <select value={selectedKey} aria-label="Tónica" onChange={(event) => { setSelectedKey(event.target.value); setCorrectionSaved(false) }}>
-                              {MUSICAL_KEYS.map((key) => <option key={key} value={key}>{key}</option>)}
-                            </select>
-                            <select value={selectedMode} aria-label="Modo" onChange={(event) => { setSelectedMode(event.target.value as AudioAnalysis['mode']); setCorrectionSaved(false) }}>
-                              <option value="major">Mayor</option>
-                              <option value="minor">Menor</option>
-                            </select>
-                          </div>
-                        ) : <strong>{analysis.key} {analysis.mode === 'major' ? 'mayor' : 'menor'}</strong>}
-                        <small>{editingAnalysis ? camelotFor(selectedKey, selectedMode) : analysis.camelot} · Camelot</small>
-                      </article>
-                    </div>
-                    {((analysis.bpmAlternatives?.length ?? 0) > 0 || (analysis.keyAlternatives?.length ?? 0) > 0) && (
-                      <details className="analysis-alternatives">
-                        <summary>Ver alternativas</summary>
-                        <div>
-                          {(analysis.bpmAlternatives?.length ?? 0) > 0 && <section><span>BPM posibles</span><div>{analysis.bpmAlternatives!.map((candidate) => <button type="button" key={candidate} onClick={() => { setDisplayBpm(candidate); setEditingAnalysis(true); setCorrectionSaved(false) }}>{candidate.toFixed(1)}</button>)}</div></section>}
-                          {(analysis.keyAlternatives?.length ?? 0) > 0 && <section><span>Tonos posibles</span><div>{analysis.keyAlternatives!.map((candidate) => <button type="button" key={`${candidate.key}-${candidate.mode}`} onClick={() => { setSelectedKey(candidate.key); setSelectedMode(candidate.mode); setEditingAnalysis(true); setCorrectionSaved(false) }}>{candidate.key} {candidate.mode === 'major' ? 'mayor' : 'menor'} · {candidate.camelot}</button>)}</div></section>}
-                        </div>
-                      </details>
-                    )}
-                    {editingAnalysis ? (
-                      <div className="review-actions">
-                        <button className="secondary-action" type="button" onClick={() => setEditingAnalysis(false)}>Cancelar</button>
-                        <button className="save-correction" type="button" onClick={saveCorrection} disabled={savingCorrection || displayBpm < 20 || displayBpm > 300}>
-                          {savingCorrection ? 'Guardando…' : correctionSaved ? 'Corrección guardada' : 'Guardar corrección'}
-                        </button>
-                      </div>
-                    ) : analysisReview === 'pending' ? (
-                      <div className="review-actions">
-                        <button className="secondary-action" type="button" onClick={() => setEditingAnalysis(true)}>Corregir</button>
-                        <button className="confirm-action" type="button" onClick={confirmAnalysis} disabled={savingCorrection}>Datos correctos</button>
-                      </div>
-                    ) : (
-                      <div className={`review-status ${analysisReview}`}>
-                        {analysisReview === 'confirmed' ? 'Datos confirmados' : 'Corrección guardada'}
-                        <div><button type="button" onClick={() => setEditingAnalysis(true)}>Editar</button><button type="button" onClick={() => currentEntry && void openSampler(currentEntry)}>Crear samples</button><button type="button" onClick={finishCurrentWork}>Finalizar</button></div>
-                      </div>
-                    )}
-                  </section>
-                )}
-              </div>
-            </div>
-          </article>
-        )}
+        {view === 'identify' && media && downloadedFile && <IdentifyView media={media} durationLabel={formatDuration(media.durationSeconds)} downloadedFile={downloadedFile} analysis={analysis} analyzing={analyzing} analysisError={analysisError} editing={editingAnalysis} review={analysisReview} bpm={displayBpm} selectedKey={selectedKey} selectedMode={selectedMode} selectedCamelot={camelotFor(selectedKey, selectedMode)} saving={savingCorrection} correctionSaved={correctionSaved} musicalKeys={MUSICAL_KEYS} onRevealFile={() => window.disco.revealFile(downloadedFile)} onBpmChange={(value) => { setDisplayBpm(value); setCorrectionSaved(false) }} onKeyChange={(value) => { setSelectedKey(value); setCorrectionSaved(false) }} onModeChange={(value) => { setSelectedMode(value); setCorrectionSaved(false) }} onEditingChange={setEditingAnalysis} onSave={() => void saveCorrection()} onConfirm={() => void confirmAnalysis()} onCreateSamples={() => currentEntry && void openSampler(currentEntry)} onFinish={finishCurrentWork} />}
 
         {(view === 'identify' || view === 'sample' || view === 'collection') && <section className={`library ${view === 'sample' ? 'sample-library' : ''} ${view === 'sample' && activeEntry ? 'sample-studio' : ''}`} aria-labelledby="library-title">
           <div className="library-heading">
