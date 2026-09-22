@@ -79,6 +79,7 @@ export type SampleExportRequest = {
   startSeconds: number
   endSeconds: number
   format: SampleFormat
+  normalizePeak: boolean
 }
 
 export type SampleExportResult =

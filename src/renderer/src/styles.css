@@ -158,9 +158,11 @@ button:disabled { color: #77747a; background: #29282d; cursor: not-allowed; }
 .selection-actions > span { margin-left: auto; color: #ff8a67; font-size: 11px; font-variant-numeric: tabular-nums; }
 .selection-actions .loop-option { display: flex; align-items: center; gap: 6px; margin: 0; color: #aaa8ae; font-size: 10px; }
 .selection-actions .loop-option input { width: 14px; height: 14px; padding: 0; accent-color: #ff6335; }
-.sample-export { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; padding-top: 10px; border-top: 1px solid #29282d; }
+.sample-export { display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; padding-top: 10px; border-top: 1px solid #29282d; }
 .sample-export > label { display: flex; align-items: center; gap: 7px; margin: 0; color: #77777e; font-size: 10px; }
 .sample-export select { min-height: 36px; padding: 0 25px 0 9px; color: #ddd9dd; border: 1px solid #3b3a40; border-radius: 7px; background: #1b1b1f; }
+.sample-export .normalize-option { padding: 0 9px; border: 1px solid #343339; border-radius: 7px; background: #17171a; }
+.sample-export .normalize-option input { width: 14px; height: 14px; padding: 0; accent-color: #ff6335; }
 .sample-export > button { min-height: 36px; padding: 7px 14px; font-size: 10px; }
 .sample-export .export-success { color: #baf6cf; border: 1px solid #285e3c; background: #173522; }
 
@@ -186,5 +188,6 @@ footer { padding: 20px 42px; color: #65646a; border-top: 1px solid #242428; font
   .evaluation-metrics { grid-template-columns: 1fr 1fr; }
   .bar-presets { grid-template-columns: 1fr 1fr; }
   .bar-presets > span { grid-column: 1 / -1; }
+  .sample-export { grid-template-columns: 1fr 1fr; }
   footer { padding: 18px 22px; }
 }

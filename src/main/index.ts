@@ -266,7 +266,8 @@ app.whenReady().then(() => {
         selected.filePath,
         request.startSeconds,
         request.endSeconds,
-        request.format
+        request.format,
+        request.normalizePeak === true
       )
       return { ok: true, filePath: selected.filePath }
     } catch (error) {

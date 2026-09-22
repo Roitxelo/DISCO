@@ -71,6 +71,7 @@ function App(): React.JSX.Element {
   const [exportingSample, setExportingSample] = useState(false)
   const [exportedSample, setExportedSample] = useState('')
   const [sampleError, setSampleError] = useState('')
+  const [normalizeSample, setNormalizeSample] = useState(false)
   const [selectedBars, setSelectedBars] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const evaluation = useMemo(() => evaluateAnalysis(history), [history])
@@ -254,7 +255,8 @@ function App(): React.JSX.Element {
       historyId: playingEntryId,
       startSeconds: selectionStart,
       endSeconds: selectionEnd,
-      format: sampleFormat
+      format: sampleFormat,
+      normalizePeak: normalizeSample
     })
     if (result.ok) {
       if (result.filePath) setExportedSample(result.filePath)
@@ -624,6 +626,10 @@ function App(): React.JSX.Element {
                                 <select value={sampleFormat} onChange={(event) => setSampleFormat(event.target.value as SampleFormat)} disabled={exportingSample}>
                                   {SAMPLE_FORMATS.map((value) => <option key={value} value={value}>{value.toUpperCase()}</option>)}
                                 </select>
+                              </label>
+                              <label className="normalize-option" title="Ajusta el pico máximo del fragmento a −1 dBFS sin comprimir su dinámica.">
+                                <input type="checkbox" checked={normalizeSample} onChange={(event) => setNormalizeSample(event.target.checked)} disabled={exportingSample} />
+                                Normalizar a −1 dB
                               </label>
                               <button type="button" onClick={saveSample} disabled={exportingSample || selectionEnd - selectionStart < 0.05}>
                                 {exportingSample ? 'Exportando…' : 'Exportar sample'}
