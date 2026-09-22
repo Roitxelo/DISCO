@@ -148,6 +148,11 @@ button:disabled { color: #77747a; background: #29282d; cursor: not-allowed; }
 .selection-controls { display: grid; gap: 8px; }
 .selection-controls > label { display: grid; grid-template-columns: 105px 1fr; align-items: center; gap: 10px; margin: 0; color: #9a989f; font-size: 10px; }
 .selection-controls input[type="range"] { padding: 0; accent-color: #ff6335; }
+.bar-presets { display: grid; grid-template-columns: auto repeat(4, 1fr); gap: 6px; align-items: center; }
+.bar-presets > span { color: #77777e; font-size: 9px; }
+.bar-presets button { min-height: 31px; padding: 5px 7px; color: #aaa8ae; border: 1px solid #343339; background: #1b1b1f; font-size: 9px; }
+.bar-presets button:hover { color: #fff; background: #29282e; }
+.bar-presets button.selected { color: #ffd4c7; border-color: #ff6335; background: rgba(255, 99, 53, .13); }
 .selection-actions { display: flex; align-items: center; gap: 12px; }
 .selection-actions > button { min-height: 34px; padding: 6px 12px; color: #ffd4c7; border: 1px solid #75432f; background: #3a241c; font-size: 10px; }
 .selection-actions > span { margin-left: auto; color: #ff8a67; font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -179,5 +184,7 @@ footer { padding: 20px 42px; color: #65646a; border-top: 1px solid #242428; font
   .history-actions { grid-column: 1 / -1; }
   .history-actions button { flex: 1; }
   .evaluation-metrics { grid-template-columns: 1fr 1fr; }
+  .bar-presets { grid-template-columns: 1fr 1fr; }
+  .bar-presets > span { grid-column: 1 / -1; }
   footer { padding: 18px 22px; }
 }

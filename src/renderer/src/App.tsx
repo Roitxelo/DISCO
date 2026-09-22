@@ -71,8 +71,13 @@ function App(): React.JSX.Element {
   const [exportingSample, setExportingSample] = useState(false)
   const [exportedSample, setExportedSample] = useState('')
   const [sampleError, setSampleError] = useState('')
+  const [selectedBars, setSelectedBars] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const evaluation = useMemo(() => evaluateAnalysis(history), [history])
+  const activeEntry = useMemo(
+    () => history.find((entry) => entry.id === playingEntryId) ?? null,
+    [history, playingEntryId]
+  )
 
   useEffect(() => {
     void window.disco.listHistory().then((result) => {
@@ -187,6 +192,7 @@ function App(): React.JSX.Element {
       setAudioDuration(0)
       setSelectionStart(0)
       setSelectionEnd(0)
+      setSelectedBars(null)
       setExportedSample('')
       setSampleError('')
       setWaveformLoading(true)
@@ -204,6 +210,28 @@ function App(): React.JSX.Element {
     if (!player) return
     player.currentTime = selectionStart
     void player.play()
+  }
+
+  function selectBarLength(bars: number): void {
+    const bpm = activeEntry?.analysis?.bpm
+    if (!bpm || !audioDuration) return
+    const length = (bars * 4 * 60) / bpm
+    const start = Math.min(selectionStart, Math.max(0, audioDuration - length))
+    setSelectionStart(start)
+    setSelectionEnd(Math.min(audioDuration, start + length))
+    setSelectedBars(bars)
+  }
+
+  function changeSelectionStart(nextStart: number): void {
+    const bpm = activeEntry?.analysis?.bpm
+    if (selectedBars && bpm) {
+      const length = (selectedBars * 4 * 60) / bpm
+      const start = Math.min(nextStart, Math.max(0, audioDuration - length))
+      setSelectionStart(start)
+      setSelectionEnd(Math.min(audioDuration, start + length))
+      return
+    }
+    setSelectionStart(Math.min(nextStart, selectionEnd - 0.05))
   }
 
   function keepPlaybackInsideSelection(): void {
@@ -546,7 +574,7 @@ function App(): React.JSX.Element {
                                 max={audioDuration}
                                 step="0.01"
                                 value={selectionStart}
-                                onChange={(event) => setSelectionStart(Math.min(Number(event.target.value), selectionEnd - 0.05))}
+                                onChange={(event) => changeSelectionStart(Number(event.target.value))}
                               />
                             </label>
                             <label>
@@ -557,9 +585,31 @@ function App(): React.JSX.Element {
                                 max={audioDuration}
                                 step="0.01"
                                 value={selectionEnd}
-                                onChange={(event) => setSelectionEnd(Math.max(Number(event.target.value), selectionStart + 0.05))}
+                                onChange={(event) => {
+                                  setSelectionEnd(Math.max(Number(event.target.value), selectionStart + 0.05))
+                                  setSelectedBars(null)
+                                }}
                               />
                             </label>
+                            {activeEntry?.analysis && (
+                              <div className="bar-presets">
+                                <span>Duración 4/4 · {activeEntry.analysis.bpm.toFixed(1)} BPM</span>
+                                {[1, 2, 4, 8].map((bars) => {
+                                  const requiredSeconds = (bars * 4 * 60) / activeEntry.analysis!.bpm
+                                  return (
+                                    <button
+                                      className={selectedBars === bars ? 'selected' : ''}
+                                      type="button"
+                                      key={bars}
+                                      disabled={requiredSeconds > audioDuration}
+                                      onClick={() => selectBarLength(bars)}
+                                    >
+                                      {bars} {bars === 1 ? 'compás' : 'compases'}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            )}
                             <div className="selection-actions">
                               <button type="button" onClick={playSelection}>Reproducir selección</button>
                               <label className="loop-option">
@@ -595,6 +645,7 @@ function App(): React.JSX.Element {
                           setAudioDuration(duration)
                           setSelectionStart(0)
                           setSelectionEnd(duration)
+                          setSelectedBars(null)
                         }}
                         onTimeUpdate={keepPlaybackInsideSelection}
                         onError={() => setHistoryError('No se pudo reproducir este archivo.')}

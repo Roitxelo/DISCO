@@ -56,7 +56,7 @@ consulta de metadatos, descarga, conversión, análisis musical, revisión de re
 - [x] Exportar el fragmento en WAV, MP3 o FLAC.
 - [x] Aplicar fundidos cortos para evitar clics.
 - [x] Nombrar el sample con título, BPM y tonalidad.
-- [ ] Ajustar la selección a 1, 2, 4 u 8 compases.
+- [x] Ajustar la selección a 1, 2, 4 u 8 compases.
 - [ ] Añadir normalización opcional.
 
 ## Fase 5 — UX/UI
