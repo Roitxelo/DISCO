@@ -77,14 +77,25 @@ export async function saveHistoryEntry(request: HistorySaveRequest): Promise<His
   return updated
 }
 
-export async function addHistorySample(
+export async function saveHistorySample(
   id: string,
-  sample: Omit<HistoryEntry['samples'][number], 'id' | 'createdAt'>
+  sample: Omit<HistoryEntry['samples'][number], 'id' | 'createdAt'>,
+  sampleId?: string
 ): Promise<void> {
   const entries = await readHistory()
-  const updated = entries.map((entry) => entry.id === id
-    ? { ...entry, samples: [...entry.samples, { ...sample, id: randomUUID(), createdAt: new Date().toISOString() }] }
-    : entry)
+  const updated = entries.map((entry) => {
+    if (entry.id !== id) return entry
+    const existing = sampleId ? entry.samples.find((item) => item.id === sampleId) : null
+    if (!existing) {
+      return { ...entry, samples: [...entry.samples, { ...sample, id: randomUUID(), createdAt: new Date().toISOString() }] }
+    }
+    return {
+      ...entry,
+      samples: entry.samples.map((item) => item.id === sampleId
+        ? { ...sample, id: item.id, createdAt: item.createdAt }
+        : item)
+    }
+  })
   await writeHistory(updated)
 }
 

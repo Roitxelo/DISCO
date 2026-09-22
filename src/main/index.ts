@@ -1,6 +1,7 @@
 import { createReadStream } from 'node:fs'
-import { dirname, extname, join } from 'node:path'
-import { stat } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { basename, dirname, extname, join } from 'node:path'
+import { rename, rm, stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
@@ -11,7 +12,7 @@ import { generateWaveform } from './services/waveform'
 import { exportSample } from './services/sampleExport'
 import {
   listHistory,
-  addHistorySample,
+  saveHistorySample,
   removeHistoryEntry,
   saveHistoryEntry,
   updateHistoryAnalysis
@@ -262,6 +263,7 @@ app.whenReady().then(() => {
     if (
       !request ||
       typeof request.historyId !== 'string' ||
+      (request.sampleId !== undefined && typeof request.sampleId !== 'string') ||
       typeof request.startSeconds !== 'number' ||
       typeof request.endSeconds !== 'number'
     ) {
@@ -277,10 +279,15 @@ app.whenReady().then(() => {
     const musicalInfo = entry.analysis
       ? ` - ${entry.analysis.bpm.toFixed(1)} BPM - ${entry.analysis.key}${entry.analysis.mode === 'minor' ? 'm' : ''}`
       : ''
-    const defaultPath = join(
-      dirname(entry.filePath),
-      `${safeTitle}${musicalInfo} - Sample.${request.format}`
-    )
+    const existingSample = request.sampleId
+      ? entry.samples.find((sample) => sample.id === request.sampleId)
+      : null
+    const defaultPath = existingSample
+      ? join(
+          dirname(existingSample.filePath),
+          `${basename(existingSample.filePath, extname(existingSample.filePath))}.${request.format}`
+        )
+      : join(dirname(entry.filePath), `${safeTitle}${musicalInfo} - Sample.${request.format}`)
     const selected = await dialog.showSaveDialog({
       title: 'Guardar sample',
       defaultPath,
@@ -288,24 +295,51 @@ app.whenReady().then(() => {
     })
     if (selected.canceled || !selected.filePath) return { ok: true, filePath: null }
 
+    let temporaryPath: string | null = null
     try {
+      const replacesExistingFile = existingSample?.filePath === selected.filePath
+      const extension = extname(selected.filePath)
+      temporaryPath = replacesExistingFile
+        ? join(dirname(selected.filePath), `.${basename(selected.filePath, extension)}.${randomUUID()}${extension}`)
+        : selected.filePath
       await exportSample(
         entry.filePath,
-        selected.filePath,
+        temporaryPath,
         request.startSeconds,
         request.endSeconds,
         request.format,
         request.normalizePeak === true
       )
-      await addHistorySample(request.historyId, {
+      if (replacesExistingFile) {
+        const backupPath = `${selected.filePath}.disco-backup-${randomUUID()}`
+        let originalMoved = false
+        try {
+          await rename(selected.filePath, backupPath)
+          originalMoved = true
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+        }
+        try {
+          await rename(temporaryPath, selected.filePath)
+        } catch (error) {
+          await rm(temporaryPath, { force: true })
+          if (originalMoved) await rename(backupPath, selected.filePath)
+          throw error
+        }
+        if (originalMoved) await rm(backupPath, { force: true }).catch(() => undefined)
+      }
+      await saveHistorySample(request.historyId, {
         filePath: selected.filePath,
         format: request.format,
         startSeconds: request.startSeconds,
         endSeconds: request.endSeconds,
         normalizePeak: request.normalizePeak === true
-      })
+      }, request.sampleId)
       return { ok: true, filePath: selected.filePath }
     } catch (error) {
+      if (temporaryPath && temporaryPath !== selected.filePath) {
+        await rm(temporaryPath, { force: true }).catch(() => undefined)
+      }
       const message = error instanceof Error ? error.message : 'No se pudo exportar el sample.'
       return { ok: false, error: message }
     }

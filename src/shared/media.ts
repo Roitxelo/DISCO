@@ -90,6 +90,7 @@ export type SampleFormat = (typeof SAMPLE_FORMATS)[number]
 
 export type SampleExportRequest = {
   historyId: string
+  sampleId?: string
   startSeconds: number
   endSeconds: number
   format: SampleFormat

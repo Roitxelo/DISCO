@@ -79,6 +79,7 @@ function App(): React.JSX.Element {
   const [sampleError, setSampleError] = useState('')
   const [samplePreviewId, setSamplePreviewId] = useState('')
   const [samplePreviewUrl, setSamplePreviewUrl] = useState('')
+  const [editingSampleId, setEditingSampleId] = useState('')
   const [normalizeSample, setNormalizeSample] = useState(false)
   const [selectedBars, setSelectedBars] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -261,7 +262,10 @@ function App(): React.JSX.Element {
   }
 
   async function openSampler(entry: HistoryEntry): Promise<void> {
-    if (playingEntryId !== entry.id) await togglePlayer(entry.id)
+    if (playingEntryId !== entry.id) {
+      setEditingSampleId('')
+      await togglePlayer(entry.id)
+    }
     setView('sample')
   }
 
@@ -275,6 +279,7 @@ function App(): React.JSX.Element {
     setWaveformViewStart(0)
     setExportedSample('')
     setSampleError('')
+    setEditingSampleId('')
   }
 
   function prepareAnotherFormat(entry: HistoryEntry): void {
@@ -314,6 +319,37 @@ function App(): React.JSX.Element {
     } else {
       setHistoryError(result.error)
     }
+  }
+
+  function editSample(sample: HistoryEntry['samples'][number]): void {
+    const duration = sample.endSeconds - sample.startSeconds
+    setEditingSampleId(sample.id)
+    setSelectionStart(sample.startSeconds)
+    setSelectionEnd(sample.endSeconds)
+    setSampleFormat(sample.format)
+    setNormalizeSample(sample.normalizePeak)
+    setExportedSample('')
+    setSampleError('')
+
+    const bpm = activeEntry?.analysis?.bpm
+    const matchingBars = bpm
+      ? [1, 2, 4, 8].find((bars) => Math.abs((bars * 4 * 60) / bpm - duration) < 0.04) ?? null
+      : null
+    setSelectedBars(matchingBars)
+
+    if (audioDuration > 0) {
+      const visibleDuration = Math.min(audioDuration, Math.max(duration * 1.8, audioDuration / 16))
+      const zoom = audioDuration / visibleDuration
+      const centeredStart = sample.startSeconds - (visibleDuration - duration) / 2
+      setWaveformZoom(zoom)
+      setWaveformViewStart(Math.min(audioDuration - visibleDuration, Math.max(0, centeredStart)))
+    }
+  }
+
+  function cancelSampleEditing(): void {
+    setEditingSampleId('')
+    setExportedSample('')
+    setSampleError('')
   }
 
   function playSelection(): void {
@@ -469,6 +505,7 @@ function App(): React.JSX.Element {
     setSampleError('')
     const result = await window.disco.exportSample({
       historyId: playingEntryId,
+      sampleId: editingSampleId || undefined,
       startSeconds: selectionStart,
       endSeconds: selectionEnd,
       format: sampleFormat,
@@ -479,6 +516,7 @@ function App(): React.JSX.Element {
         setExportedSample(result.filePath)
         const refreshed = await window.disco.listHistory()
         if (refreshed.ok) setHistory(refreshed.entries)
+        setEditingSampleId('')
       }
     } else {
       setSampleError(result.error)
@@ -856,12 +894,13 @@ function App(): React.JSX.Element {
                       <summary>{entry.samples.length} {entry.samples.length === 1 ? 'sample asociado' : 'samples asociados'}</summary>
                       <div className="sample-list">
                         {entry.samples.map((sample, index) => (
-                          <article className="sample-row" key={sample.id}>
+                          <article className={`sample-row ${editingSampleId === sample.id ? 'editing' : ''}`} key={sample.id}>
                             <div>
                               <strong>Sample {String(index + 1).padStart(2, '0')}</strong>
                               <span>{formatTimestamp(sample.startSeconds)}–{formatTimestamp(sample.endSeconds)} · {sample.format.toUpperCase()}{sample.normalizePeak ? ' · normalizado' : ''}</span>
                             </div>
                             <div className="sample-row-actions">
+                              {view === 'sample' && <button type="button" onClick={() => editSample(sample)} disabled={editingSampleId === sample.id}>Editar</button>}
                               <button type="button" onClick={() => void toggleSamplePreview(entry.id, sample.id)}>{samplePreviewId === sample.id ? 'Cerrar' : 'Escuchar'}</button>
                               <button type="button" onClick={() => window.disco.revealFile(sample.filePath)}>Localizar</button>
                             </div>
@@ -969,6 +1008,7 @@ function App(): React.JSX.Element {
                               </label>
                               <span>{formatTimestamp(selectionEnd - selectionStart)}</span>
                             </div>
+                            {editingSampleId && <div className="sample-editing" role="status"><span>Editando Sample {String(entry.samples.findIndex((sample) => sample.id === editingSampleId) + 1).padStart(2, '0')}</span><button type="button" onClick={cancelSampleEditing}>Cancelar</button></div>}
                             <div className="sample-export">
                               <label>
                                 Formato
@@ -981,7 +1021,7 @@ function App(): React.JSX.Element {
                                 Normalizar a −1 dB
                               </label>
                               <button type="button" onClick={saveSample} disabled={exportingSample || selectionEnd - selectionStart < 0.05}>
-                                {exportingSample ? 'Exportando…' : 'Exportar sample'}
+                                {exportingSample ? 'Exportando…' : editingSampleId ? 'Actualizar sample' : 'Exportar sample'}
                               </button>
                               {exportedSample && <button className="export-success" type="button" onClick={() => window.disco.revealFile(exportedSample)}>Mostrar sample</button>}
                             </div>
