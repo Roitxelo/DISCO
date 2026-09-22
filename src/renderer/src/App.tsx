@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
+import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react'
 import { AUDIO_FORMATS, SAMPLE_FORMATS } from '../../shared/media'
 import type { AudioAnalysis, AudioFormat, HistoryEntry, MediaInfo, SampleFormat } from '../../shared/media'
 import { evaluateAnalysis } from './analysisEvaluation'
@@ -68,6 +68,8 @@ function App(): React.JSX.Element {
   const [waveformLoading, setWaveformLoading] = useState(false)
   const [audioDuration, setAudioDuration] = useState(0)
   const [playheadTime, setPlayheadTime] = useState(0)
+  const [waveformZoom, setWaveformZoom] = useState(1)
+  const [waveformViewStart, setWaveformViewStart] = useState(0)
   const [selectionStart, setSelectionStart] = useState(0)
   const [selectionEnd, setSelectionEnd] = useState(0)
   const [loopSelection, setLoopSelection] = useState(true)
@@ -225,6 +227,8 @@ function App(): React.JSX.Element {
       setWaveformUrl('')
       setAudioDuration(0)
       setPlayheadTime(0)
+      setWaveformZoom(1)
+      setWaveformViewStart(0)
       setSelectionStart(0)
       setSelectionEnd(0)
       setSelectedBars(null)
@@ -267,6 +271,8 @@ function App(): React.JSX.Element {
     setWaveformUrl('')
     setAudioDuration(0)
     setPlayheadTime(0)
+    setWaveformZoom(1)
+    setWaveformViewStart(0)
     setExportedSample('')
     setSampleError('')
   }
@@ -344,7 +350,42 @@ function App(): React.JSX.Element {
     const bounds = waveformRef.current?.getBoundingClientRect()
     if (!bounds || !audioDuration) return 0
     const ratio = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width))
-    return ratio * audioDuration
+    return waveformViewStart + ratio * (audioDuration / waveformZoom)
+  }
+
+  function handleWaveformWheel(event: ReactWheelEvent<HTMLDivElement>): void {
+    if (!audioDuration) return
+    const bounds = waveformRef.current?.getBoundingClientRect()
+    if (!bounds) return
+    const visibleDuration = audioDuration / waveformZoom
+
+    if (event.ctrlKey) {
+      event.preventDefault()
+      const pointerRatio = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width))
+      const anchorTime = waveformViewStart + pointerRatio * visibleDuration
+      const factor = event.deltaY < 0 ? 1.25 : 0.8
+      const nextZoom = Math.min(16, Math.max(1, waveformZoom * factor))
+      const nextVisibleDuration = audioDuration / nextZoom
+      const nextStart = Math.min(
+        audioDuration - nextVisibleDuration,
+        Math.max(0, anchorTime - pointerRatio * nextVisibleDuration)
+      )
+      setWaveformZoom(nextZoom)
+      setWaveformViewStart(nextStart)
+      return
+    }
+
+    if (waveformZoom > 1) {
+      event.preventDefault()
+      const wheelDistance = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+      const nextStart = waveformViewStart + (wheelDistance / bounds.width) * visibleDuration
+      setWaveformViewStart(Math.min(audioDuration - visibleDuration, Math.max(0, nextStart)))
+    }
+  }
+
+  function resetWaveformZoom(): void {
+    setWaveformZoom(1)
+    setWaveformViewStart(0)
   }
 
   function beginWaveformSelection(event: ReactPointerEvent<HTMLDivElement>): void {
@@ -511,6 +552,16 @@ function App(): React.JSX.Element {
     : currentEntry.analysisReview === 'pending'
       ? { label: currentEntry.media.title, detail: currentEntry.analysis ? 'Revisar identificación' : 'Análisis pendiente', target: 'identify' as AppView }
       : { label: currentEntry.media.title, detail: 'Guardada · sampleo opcional', target: 'sample' as AppView }
+
+  const waveformViewDuration = audioDuration > 0 ? audioDuration / waveformZoom : 0
+  const waveformViewEnd = waveformViewStart + waveformViewDuration
+  const waveformPercent = (time: number): number => waveformViewDuration > 0
+    ? ((time - waveformViewStart) / waveformViewDuration) * 100
+    : 0
+  const selectionVisible = selectionEnd >= waveformViewStart && selectionStart <= waveformViewEnd
+  const visibleSelectionStart = Math.max(selectionStart, waveformViewStart)
+  const visibleSelectionEnd = Math.min(selectionEnd, waveformViewEnd)
+  const playheadVisible = playheadTime >= waveformViewStart && playheadTime <= waveformViewEnd
 
   return (
     <div className="app-shell">
@@ -825,6 +876,7 @@ function App(): React.JSX.Element {
                       <div className="waveform-panel">
                         {waveformLoading && <div className="waveform-loading">Generando forma de onda…</div>}
                         {waveformUrl && (
+                          <>
                           <div
                             className="waveform-view interactive-waveform"
                             ref={waveformRef}
@@ -832,24 +884,36 @@ function App(): React.JSX.Element {
                             onPointerMove={moveWaveformSelection}
                             onPointerUp={endWaveformSelection}
                             onPointerCancel={endWaveformSelection}
+                            onWheel={handleWaveformWheel}
                           >
-                            <img src={waveformUrl} alt="Forma de onda del audio. Arrastra para seleccionar un fragmento." draggable="false" />
+                            <img
+                              src={waveformUrl}
+                              alt="Forma de onda del audio. Arrastra para seleccionar un fragmento. Usa Control y la rueda para ampliar."
+                              draggable="false"
+                              style={{
+                                width: `${waveformZoom * 100}%`,
+                                left: `${-(waveformViewStart / Math.max(audioDuration, 1)) * waveformZoom * 100}%`
+                              }}
+                            />
                             {audioDuration > 0 && (
                               <>
-                                <div
-                                  className="waveform-selection"
+                                {selectionVisible && <div
+                                  className={`waveform-selection ${selectionStart < waveformViewStart ? 'clipped-start' : ''} ${selectionEnd > waveformViewEnd ? 'clipped-end' : ''}`}
                                   style={{
-                                    left: `${(selectionStart / audioDuration) * 100}%`,
-                                    width: `${((selectionEnd - selectionStart) / audioDuration) * 100}%`
+                                    left: `${waveformPercent(visibleSelectionStart)}%`,
+                                    width: `${waveformPercent(visibleSelectionEnd) - waveformPercent(visibleSelectionStart)}%`
                                   }}
                                 >
-                                  <button className="selection-handle start" type="button" aria-label={`Ajustar inicio, ${formatTimestamp(selectionStart)}`} onPointerDown={(event) => beginHandleDrag(event, 'start')} onKeyDown={(event) => adjustSelectionEdge('start', event)} />
-                                  <button className="selection-handle end" type="button" aria-label={`Ajustar final, ${formatTimestamp(selectionEnd)}`} onPointerDown={(event) => beginHandleDrag(event, 'end')} onKeyDown={(event) => adjustSelectionEdge('end', event)} />
-                                </div>
-                                <div className="waveform-playhead" aria-hidden="true" style={{ left: `${(playheadTime / audioDuration) * 100}%` }} />
+                                  {selectionStart >= waveformViewStart && <button className="selection-handle start" type="button" aria-label={`Ajustar inicio, ${formatTimestamp(selectionStart)}`} onPointerDown={(event) => beginHandleDrag(event, 'start')} onKeyDown={(event) => adjustSelectionEdge('start', event)} />}
+                                  {selectionEnd <= waveformViewEnd && <button className="selection-handle end" type="button" aria-label={`Ajustar final, ${formatTimestamp(selectionEnd)}`} onPointerDown={(event) => beginHandleDrag(event, 'end')} onKeyDown={(event) => adjustSelectionEdge('end', event)} />}
+                                </div>}
+                                {playheadVisible && <div className="waveform-playhead" aria-hidden="true" style={{ left: `${waveformPercent(playheadTime)}%` }} />}
+                                <button className="waveform-zoom" type="button" onClick={resetWaveformZoom} aria-label={`Zoom ${waveformZoom.toFixed(1)}. Restablecer vista completa.`}>{waveformZoom.toFixed(1)}×</button>
                               </>
                             )}
                           </div>
+                          {audioDuration > 0 && <div className="waveform-scale" aria-hidden="true"><span>{formatTimestamp(waveformViewStart)}</span><span>{formatTimestamp(waveformViewStart + waveformViewDuration / 2)}</span><span>{formatTimestamp(waveformViewEnd)}</span></div>}
+                          </>
                         )}
                         {audioDuration > 0 && (
                           <div className="selection-controls">
@@ -935,6 +999,8 @@ function App(): React.JSX.Element {
                           const duration = event.currentTarget.duration
                           setAudioDuration(duration)
                           setPlayheadTime(0)
+                          setWaveformZoom(1)
+                          setWaveformViewStart(0)
                           setSelectionStart(0)
                           setSelectionEnd(duration)
                           setSelectedBars(null)
