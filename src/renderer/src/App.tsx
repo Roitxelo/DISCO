@@ -68,6 +68,7 @@ function App(): React.JSX.Element {
   const [waveformLoading, setWaveformLoading] = useState(false)
   const [audioDuration, setAudioDuration] = useState(0)
   const [playheadTime, setPlayheadTime] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
   const [waveformZoom, setWaveformZoom] = useState(1)
   const [waveformViewStart, setWaveformViewStart] = useState(0)
   const [selectionStart, setSelectionStart] = useState(0)
@@ -87,7 +88,7 @@ function App(): React.JSX.Element {
   const dragModeRef = useRef<'selection' | 'start' | 'end' | null>(null)
   const dragAnchorRef = useRef(0)
   const dragStartXRef = useRef(0)
-  const clickSelectionLengthRef = useRef(0)
+  const playbackUsesSelectionRef = useRef(false)
   const evaluation = useMemo(() => evaluateAnalysis(history), [history])
   const pendingEntries = useMemo(
     () => history.filter((entry) => entry.analysisReview === 'pending'),
@@ -112,6 +113,18 @@ function App(): React.JSX.Element {
       else setHistoryError(result.error)
     })
   }, [])
+
+  useEffect(() => {
+    function handlePlaybackShortcut(event: KeyboardEvent): void {
+      if (event.code !== 'Space' || event.repeat || view !== 'sample' || !audioSource) return
+      const target = event.target as HTMLElement | null
+      if (target?.closest('input, select, textarea, button, [contenteditable="true"]')) return
+      event.preventDefault()
+      togglePlayback()
+    }
+    window.addEventListener('keydown', handlePlaybackShortcut)
+    return () => window.removeEventListener('keydown', handlePlaybackShortcut)
+  }, [view, audioSource, audioDuration, selectionStart, selectionEnd])
 
   async function saveToHistory(filePath: string, audioAnalysis: AudioAnalysis | null): Promise<void> {
     if (!media) return
@@ -219,6 +232,7 @@ function App(): React.JSX.Element {
       setAudioSource('')
       setWaveformUrl('')
       setPlayheadTime(0)
+      setIsPlaying(false)
       return
     }
     const result = await window.disco.getAudioSource(id)
@@ -228,6 +242,7 @@ function App(): React.JSX.Element {
       setWaveformUrl('')
       setAudioDuration(0)
       setPlayheadTime(0)
+      setIsPlaying(false)
       setWaveformZoom(1)
       setWaveformViewStart(0)
       setSelectionStart(0)
@@ -275,6 +290,7 @@ function App(): React.JSX.Element {
     setWaveformUrl('')
     setAudioDuration(0)
     setPlayheadTime(0)
+    setIsPlaying(false)
     setWaveformZoom(1)
     setWaveformViewStart(0)
     setExportedSample('')
@@ -300,6 +316,7 @@ function App(): React.JSX.Element {
     setAudioSource('')
     setWaveformUrl('')
     setPlayheadTime(0)
+    setIsPlaying(false)
     setSamplePreviewId('')
     setSamplePreviewUrl('')
     setView('collection')
@@ -357,6 +374,21 @@ function App(): React.JSX.Element {
     if (!player) return
     player.currentTime = selectionStart
     setPlayheadTime(selectionStart)
+    playbackUsesSelectionRef.current = true
+    void player.play()
+  }
+
+  function togglePlayback(): void {
+    const player = audioRef.current
+    if (!player || !audioDuration) return
+    if (!player.paused) {
+      player.pause()
+      return
+    }
+    const startTime = player.currentTime >= audioDuration - 0.01 ? 0 : player.currentTime
+    player.currentTime = startTime
+    setPlayheadTime(startTime)
+    playbackUsesSelectionRef.current = startTime >= selectionStart && startTime < selectionEnd
     void player.play()
   }
 
@@ -430,7 +462,6 @@ function App(): React.JSX.Element {
     dragModeRef.current = 'selection'
     dragAnchorRef.current = time
     dragStartXRef.current = event.clientX
-    clickSelectionLengthRef.current = Math.max(0.05, selectionEnd - selectionStart)
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
@@ -463,12 +494,19 @@ function App(): React.JSX.Element {
   function endWaveformSelection(event: ReactPointerEvent<HTMLDivElement>): void {
     const mode = dragModeRef.current
     if (!mode) return
-    if (mode === 'selection' && Math.abs(event.clientX - dragStartXRef.current) < 3) {
+    const wasClick = mode === 'selection' && Math.abs(event.clientX - dragStartXRef.current) < 3
+    if (wasClick) {
       const time = timeFromWaveformPointer(event)
-      const length = Math.min(clickSelectionLengthRef.current, audioDuration)
-      const start = Math.min(time, Math.max(0, audioDuration - length))
-      setSelectionStart(start)
-      setSelectionEnd(start + length)
+      const player = audioRef.current
+      if (player) player.currentTime = time
+      setPlayheadTime(time)
+      playbackUsesSelectionRef.current = time >= selectionStart && time < selectionEnd
+    } else if (mode === 'selection') {
+      const start = Math.min(dragAnchorRef.current, timeFromWaveformPointer(event))
+      const player = audioRef.current
+      if (player) player.currentTime = start
+      setPlayheadTime(start)
+      playbackUsesSelectionRef.current = true
     }
     dragModeRef.current = null
     if (waveformRef.current?.hasPointerCapture(event.pointerId)) {
@@ -489,7 +527,17 @@ function App(): React.JSX.Element {
     const player = audioRef.current
     if (!player) return
     setPlayheadTime(player.currentTime)
-    if (selectionEnd <= selectionStart || player.currentTime < selectionEnd) return
+    if (waveformZoom > 1) {
+      const visibleDuration = audioDuration / waveformZoom
+      const visibleEnd = waveformViewStart + visibleDuration
+      if (player.currentTime < waveformViewStart || player.currentTime > visibleEnd) {
+        setWaveformViewStart(Math.min(
+          audioDuration - visibleDuration,
+          Math.max(0, player.currentTime - visibleDuration * 0.1)
+        ))
+      }
+    }
+    if (!playbackUsesSelectionRef.current || selectionEnd <= selectionStart || player.currentTime < selectionEnd) return
     if (loopSelection) {
       player.currentTime = selectionStart
       void player.play()
@@ -1000,13 +1048,17 @@ function App(): React.JSX.Element {
                                 })}
                               </div>
                             )}
-                            <div className="selection-actions">
-                              <button type="button" onClick={playSelection}>Reproducir selección</button>
+                            <div className="transport" aria-label="Reproductor">
+                              <button className="transport-play" type="button" onClick={togglePlayback} aria-label={isPlaying ? 'Pausar' : 'Reproducir'}>
+                                <span aria-hidden="true">{isPlaying ? 'Ⅱ' : '▶'}</span>
+                              </button>
+                              <span className="transport-time">{formatTimestamp(playheadTime)} <small>/ {formatTimestamp(audioDuration)}</small></span>
+                              <button className="selection-play" type="button" onClick={playSelection}>Selección</button>
                               <label className="loop-option">
                                 <input type="checkbox" checked={loopSelection} onChange={(event) => setLoopSelection(event.target.checked)} />
                                 Repetir
                               </label>
-                              <span>{formatTimestamp(selectionEnd - selectionStart)}</span>
+                              <span className="selection-duration">{formatTimestamp(selectionEnd - selectionStart)}</span>
                             </div>
                             {editingSampleId && <div className="sample-editing" role="status"><span>Editando Sample {String(entry.samples.findIndex((sample) => sample.id === editingSampleId) + 1).padStart(2, '0')}</span><button type="button" onClick={cancelSampleEditing}>Cancelar</button></div>}
                             <div className="sample-export">
@@ -1031,9 +1083,8 @@ function App(): React.JSX.Element {
                       </div>
                       <audio
                         ref={audioRef}
+                        className="audio-engine"
                         src={audioSource}
-                        controls
-                        autoPlay
                         preload="metadata"
                         onLoadedMetadata={(event) => {
                           const duration = event.currentTarget.duration
@@ -1046,6 +1097,9 @@ function App(): React.JSX.Element {
                           setSelectedBars(null)
                         }}
                         onTimeUpdate={keepPlaybackInsideSelection}
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        onEnded={() => { setIsPlaying(false); setPlayheadTime(audioDuration) }}
                         onError={() => setHistoryError('No se pudo reproducir este archivo.')}
                       >
                         Tu sistema no permite reproducir este formato de audio.
