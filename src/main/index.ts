@@ -114,12 +114,17 @@ function createWindow(): void {
 app.whenReady().then(() => {
   protocol.handle('disco-audio', async (request) => {
     const url = new URL(request.url)
-    const id = decodeURIComponent(url.pathname.slice(1))
-    const entry = (await listHistory()).find((item) => item.id === id)
+    const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
+    const entry = (await listHistory()).find((item) => item.id === parts[0])
     if (!entry) return new Response('Audio no autorizado.', { status: 404 })
 
+    const filePath = url.hostname === 'sample'
+      ? entry.samples.find((sample) => sample.id === parts[1])?.filePath
+      : entry.filePath
+    if (!filePath) return new Response('Audio no autorizado.', { status: 404 })
+
     try {
-      return await streamAudio(request, entry.filePath)
+      return await streamAudio(request, filePath)
     } catch {
       return new Response('Archivo no encontrado.', { status: 404 })
     }
@@ -213,6 +218,28 @@ app.whenReady().then(() => {
       return { ok: true, url: `disco-audio://history/${encodeURIComponent(id)}` }
     } catch {
       return { ok: false, error: 'No se encuentra el archivo. Puede que se haya movido o eliminado.' }
+    }
+  })
+
+  ipcMain.handle('history:sample-source', async (
+    _event,
+    historyId: unknown,
+    sampleId: unknown
+  ): Promise<AudioSourceResult> => {
+    if (typeof historyId !== 'string' || typeof sampleId !== 'string') {
+      return { ok: false, error: 'El sample no es válido.' }
+    }
+    const entry = (await listHistory()).find((item) => item.id === historyId)
+    const sample = entry?.samples.find((item) => item.id === sampleId)
+    if (!entry || !sample) return { ok: false, error: 'El sample ya no está en la colección.' }
+    try {
+      await stat(sample.filePath)
+      return {
+        ok: true,
+        url: `disco-audio://sample/${encodeURIComponent(historyId)}/${encodeURIComponent(sampleId)}`
+      }
+    } catch {
+      return { ok: false, error: 'No se encuentra el sample. Puede que se haya movido o eliminado.' }
     }
   })
 

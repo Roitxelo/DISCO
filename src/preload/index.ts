@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('disco', {
     ipcRenderer.invoke('history:update-analysis', request),
   getAudioSource: (id: string): Promise<AudioSourceResult> =>
     ipcRenderer.invoke('history:audio-source', id),
+  getSampleSource: (historyId: string, sampleId: string): Promise<AudioSourceResult> =>
+    ipcRenderer.invoke('history:sample-source', historyId, sampleId),
   getWaveform: (id: string): Promise<WaveformResult> => ipcRenderer.invoke('history:waveform', id),
   exportSample: (request: SampleExportRequest): Promise<SampleExportResult> =>
     ipcRenderer.invoke('sample:export', request),

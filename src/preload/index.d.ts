@@ -28,6 +28,7 @@ declare global {
       saveHistory: (request: HistorySaveRequest) => Promise<HistoryResult>
       updateHistoryAnalysis: (request: HistoryAnalysisUpdate) => Promise<HistoryResult>
       getAudioSource: (id: string) => Promise<AudioSourceResult>
+      getSampleSource: (historyId: string, sampleId: string) => Promise<AudioSourceResult>
       getWaveform: (id: string) => Promise<WaveformResult>
       exportSample: (request: SampleExportRequest) => Promise<SampleExportResult>
       removeHistory: (id: string) => Promise<HistoryResult>

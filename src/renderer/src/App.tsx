@@ -74,6 +74,8 @@ function App(): React.JSX.Element {
   const [exportingSample, setExportingSample] = useState(false)
   const [exportedSample, setExportedSample] = useState('')
   const [sampleError, setSampleError] = useState('')
+  const [samplePreviewId, setSamplePreviewId] = useState('')
+  const [samplePreviewUrl, setSamplePreviewUrl] = useState('')
   const [normalizeSample, setNormalizeSample] = useState(false)
   const [selectedBars, setSelectedBars] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -260,6 +262,35 @@ function App(): React.JSX.Element {
     setView('download')
   }
 
+  function finishCurrentWork(): void {
+    setDownloadedFile('')
+    setMedia(null)
+    setAnalysis(null)
+    setAnalysisReview('pending')
+    setPlayingEntryId('')
+    setAudioSource('')
+    setWaveformUrl('')
+    setSamplePreviewId('')
+    setSamplePreviewUrl('')
+    setView('collection')
+  }
+
+  async function toggleSamplePreview(historyId: string, sampleId: string): Promise<void> {
+    setHistoryError('')
+    if (samplePreviewId === sampleId) {
+      setSamplePreviewId('')
+      setSamplePreviewUrl('')
+      return
+    }
+    const result = await window.disco.getSampleSource(historyId, sampleId)
+    if (result.ok) {
+      setSamplePreviewId(sampleId)
+      setSamplePreviewUrl(result.url)
+    } else {
+      setHistoryError(result.error)
+    }
+  }
+
   function playSelection(): void {
     const player = audioRef.current
     if (!player) return
@@ -388,7 +419,7 @@ function App(): React.JSX.Element {
     ? { label: 'Ninguna canción activa', detail: 'Empieza con una nueva descarga', target: 'download' as AppView }
     : currentEntry.analysisReview === 'pending'
       ? { label: currentEntry.media.title, detail: currentEntry.analysis ? 'Revisar identificación' : 'Análisis pendiente', target: 'identify' as AppView }
-      : { label: currentEntry.media.title, detail: 'Lista para samplear', target: 'sample' as AppView }
+      : { label: currentEntry.media.title, detail: 'Guardada · sampleo opcional', target: 'sample' as AppView }
 
   return (
     <div className="app-shell">
@@ -415,13 +446,16 @@ function App(): React.JSX.Element {
           <span className="sidebar-label" id="current-work-title">Trabajo actual</span>
           <strong title={currentStep.label}>{currentStep.label}</strong>
           <small>{currentStep.detail}</small>
-          <button type="button" onClick={() => {
-            if (currentEntry && currentStep.target === 'identify') openIdentification(currentEntry)
-            else if (currentEntry && currentStep.target === 'sample') void openSampler(currentEntry)
-            else setView(currentStep.target)
-          }}>
-            {currentEntry ? 'Continuar' : 'Nueva descarga'}
-          </button>
+          <div className="current-work-actions">
+            <button type="button" onClick={() => {
+              if (currentEntry && currentStep.target === 'identify') openIdentification(currentEntry)
+              else if (currentEntry && currentStep.target === 'sample') void openSampler(currentEntry)
+              else setView(currentStep.target)
+            }}>
+              {!currentEntry ? 'Nueva descarga' : currentEntry.analysisReview === 'pending' ? 'Continuar' : 'Samplear'}
+            </button>
+            {currentEntry && currentEntry.analysisReview !== 'pending' && <button className="finish-work" type="button" onClick={finishCurrentWork}>Finalizar trabajo</button>}
+          </div>
         </section>
         <div className="sidebar-footer"><span>Motor listo</span><span>v{window.disco.version}</span></div>
       </aside>
@@ -601,7 +635,7 @@ function App(): React.JSX.Element {
                     ) : (
                       <div className={`review-status ${analysisReview}`}>
                         {analysisReview === 'confirmed' ? 'Datos confirmados' : 'Corrección guardada'}
-                        <div><button type="button" onClick={() => setEditingAnalysis(true)}>Editar</button><button type="button" onClick={() => currentEntry && void openSampler(currentEntry)}>Continuar a Samplea</button></div>
+                        <div><button type="button" onClick={() => setEditingAnalysis(true)}>Editar</button><button type="button" onClick={() => currentEntry && void openSampler(currentEntry)}>Crear samples</button><button type="button" onClick={finishCurrentWork}>Finalizar</button></div>
                       </div>
                     )}
                   </section>
@@ -672,6 +706,26 @@ function App(): React.JSX.Element {
                     <button type="button" onClick={() => window.disco.revealFile(entry.filePath)}>Mostrar</button>
                     <button className="remove-button" type="button" onClick={() => removeHistory(entry.id)}>Quitar</button>
                   </div>
+                  {view === 'collection' && entry.samples.length > 0 && (
+                    <details className="associated-samples">
+                      <summary>{entry.samples.length} {entry.samples.length === 1 ? 'sample asociado' : 'samples asociados'}</summary>
+                      <div className="sample-list">
+                        {entry.samples.map((sample, index) => (
+                          <article className="sample-row" key={sample.id}>
+                            <div>
+                              <strong>Sample {String(index + 1).padStart(2, '0')}</strong>
+                              <span>{formatTimestamp(sample.startSeconds)}–{formatTimestamp(sample.endSeconds)} · {sample.format.toUpperCase()}{sample.normalizePeak ? ' · normalizado' : ''}</span>
+                            </div>
+                            <div className="sample-row-actions">
+                              <button type="button" onClick={() => void toggleSamplePreview(entry.id, sample.id)}>{samplePreviewId === sample.id ? 'Cerrar' : 'Escuchar'}</button>
+                              <button type="button" onClick={() => window.disco.revealFile(sample.filePath)}>Localizar</button>
+                            </div>
+                            {samplePreviewId === sample.id && samplePreviewUrl && <audio src={samplePreviewUrl} controls autoPlay preload="metadata">Tu sistema no permite reproducir este formato.</audio>}
+                          </article>
+                        ))}
+                      </div>
+                    </details>
+                  )}
                   {view === 'sample' && playingEntryId === entry.id && audioSource && (
                     <div className="history-player">
                       <div className="waveform-panel">
