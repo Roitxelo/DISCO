@@ -253,6 +253,15 @@ function App(): React.JSX.Element {
     setView('sample')
   }
 
+  function closeSampler(): void {
+    setPlayingEntryId('')
+    setAudioSource('')
+    setWaveformUrl('')
+    setAudioDuration(0)
+    setExportedSample('')
+    setSampleError('')
+  }
+
   function prepareAnotherFormat(entry: HistoryEntry): void {
     setMedia(entry.media)
     setUrl(entry.media.sourceUrl)
@@ -414,6 +423,7 @@ function App(): React.JSX.Element {
     : view === 'collection' || view === 'sample'
       ? collectionEntries
       : history.slice(0, 3)
+  const displayedEntries = view === 'sample' && activeEntry ? [activeEntry] : visibleEntries
 
   const currentStep = !currentEntry
     ? { label: 'Ninguna canción activa', detail: 'Empieza con una nueva descarga', target: 'download' as AppView }
@@ -434,6 +444,7 @@ function App(): React.JSX.Element {
               type="button"
               key={item.id}
               className={view === item.id ? 'active' : ''}
+              aria-label={item.hint ? `${item.label}, ${item.hint} pendientes` : item.label}
               aria-current={view === item.id ? 'page' : undefined}
               onClick={() => setView(item.id)}
             >
@@ -645,13 +656,15 @@ function App(): React.JSX.Element {
           </article>
         )}
 
-        {(view === 'identify' || view === 'sample' || view === 'collection') && <section className="library" aria-labelledby="library-title">
+        {(view === 'identify' || view === 'sample' || view === 'collection') && <section className={`library ${view === 'sample' ? 'sample-library' : ''} ${view === 'sample' && activeEntry ? 'sample-studio' : ''}`} aria-labelledby="library-title">
           <div className="library-heading">
             <div>
-              <p className="eyebrow">{view === 'identify' ? 'PENDIENTES' : view === 'sample' ? 'ELIGE UNA CANCIÓN' : 'COLECCIÓN'}</p>
-              <h2 id="library-title">{view === 'identify' ? 'Por revisar' : view === 'sample' ? 'Canciones listas para samplear' : 'Canciones validadas'}</h2>
+              <p className="eyebrow">{view === 'identify' ? 'PENDIENTES' : view === 'sample' ? activeEntry ? 'MESA DE SAMPLEO' : 'ELIGE UNA CANCIÓN' : 'COLECCIÓN'}</p>
+              <h2 id="library-title">{view === 'identify' ? 'Por revisar' : view === 'sample' ? activeEntry ? activeEntry.media.title : 'Canciones listas para samplear' : 'Canciones validadas'}</h2>
             </div>
-            <span>{visibleEntries.length} {visibleEntries.length === 1 ? 'canción' : 'canciones'}</span>
+            {view === 'sample' && activeEntry
+              ? <button className="change-song" type="button" onClick={closeSampler}>Cambiar canción</button>
+              : <span>{visibleEntries.length} {visibleEntries.length === 1 ? 'canción' : 'canciones'}</span>}
           </div>
           {view === 'identify' && <details className="evaluation-panel">
             <summary>
@@ -680,9 +693,9 @@ function App(): React.JSX.Element {
           {visibleEntries.length === 0 ? (
             <p className="empty-library">{view === 'identify' ? 'No hay canciones pendientes de revisar.' : 'Todavía no hay canciones validadas en esta sección.'}</p>
           ) : (
-            <div className="history-list">
-              {visibleEntries.map((entry) => (
-                <article className="history-entry" key={entry.id}>
+            <div className={`history-list ${view === 'sample' && activeEntry ? 'studio-list' : ''}`}>
+              {displayedEntries.map((entry) => (
+                <article className={`history-entry ${view === 'sample' && activeEntry ? 'studio-entry' : ''}`} key={entry.id}>
                   {entry.media.thumbnailUrl ? <img src={entry.media.thumbnailUrl} alt="" /> : <div className="history-placeholder" />}
                   <div className="history-copy">
                     <strong title={entry.media.title}>{entry.media.title}</strong>
@@ -699,15 +712,15 @@ function App(): React.JSX.Element {
                   </div>
                   <div className="history-actions">
                     {view === 'identify' && <button type="button" onClick={() => openIdentification(entry)}>Revisar</button>}
-                    {view === 'sample' && <button className={playingEntryId === entry.id ? 'active-player' : ''} type="button" onClick={() => void openSampler(entry)}>{playingEntryId === entry.id ? 'Cerrar editor' : 'Crear sample'}</button>}
+                    {view === 'sample' && !activeEntry && <button type="button" onClick={() => void openSampler(entry)}>Abrir editor</button>}
                     {view === 'collection' && <button type="button" onClick={() => void openSampler(entry)}>Samplear</button>}
                     {view === 'collection' && <button type="button" onClick={() => openIdentification(entry)}>Editar datos</button>}
                     {view === 'collection' && <button type="button" onClick={() => prepareAnotherFormat(entry)}>Otro formato</button>}
                     <button type="button" onClick={() => window.disco.revealFile(entry.filePath)}>Mostrar</button>
-                    <button className="remove-button" type="button" onClick={() => removeHistory(entry.id)}>Quitar</button>
+                    {view !== 'sample' && <button className="remove-button" type="button" onClick={() => removeHistory(entry.id)}>Quitar</button>}
                   </div>
-                  {view === 'collection' && entry.samples.length > 0 && (
-                    <details className="associated-samples">
+                  {(view === 'collection' || view === 'sample') && entry.samples.length > 0 && (
+                    <details className="associated-samples" open={view === 'sample'}>
                       <summary>{entry.samples.length} {entry.samples.length === 1 ? 'sample asociado' : 'samples asociados'}</summary>
                       <div className="sample-list">
                         {entry.samples.map((sample, index) => (
