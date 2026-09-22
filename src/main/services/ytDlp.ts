@@ -196,6 +196,9 @@ export async function downloadAudio(
   const commonArguments = [
       '--no-playlist',
       '--newline',
+      '--progress',
+      '--progress-template',
+      'download:[download] %(progress._percent_str)s',
       '--no-warnings',
       '--retries',
       '3',

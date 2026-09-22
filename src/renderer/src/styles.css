@@ -332,13 +332,17 @@ footer { padding: 20px 42px; color: #65646a; border-top: 1px solid #242428; font
 .library { margin-top: 0; padding-top: 0; border-top: 0; }
 .library-heading .change-song { min-height: 38px; padding: 7px 13px; color: #d6d3d7; border: 1px solid #3b3a40; background: #1c1c20; font-size: 11px; }
 .library-heading .change-song:hover { background: #29282e; }
+.sampler-source { display: inline-block; margin-top: 7px; padding: 4px 7px; color: #ff9a78; border-radius: 5px; background: #2b1c17; font-size: 9px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
 .history-actions { flex-wrap: wrap; justify-content: flex-end; }
 .history-actions .remove-button { width: 100%; }
 .associated-samples { grid-column: 1 / -1; margin: 3px 0 0; border-top: 1px solid #29282d; }
-.associated-formats { grid-column: 1 / -1; margin: 3px 0 0; border-top: 1px solid #29282d; }
-.associated-formats > summary { padding: 13px 4px 7px; color: #c8c6cb; font-size: 11px; font-weight: 700; cursor: pointer; }
-.associated-formats > summary::marker { color: #ff7046; }
-.format-file-list { display: grid; gap: 7px; padding: 4px 0 2px; }
+.associated-formats { grid-column: 1 / -1; justify-self: end; width: min(100%, 680px); margin: 2px 0 0; }
+.associated-formats > summary { width: max-content; margin-left: auto; padding: 7px 10px; color: #aaa8ae; border: 1px solid #39383e; border-radius: 7px; background: #19191d; font-size: 10px; font-weight: 700; cursor: pointer; list-style: none; }
+.associated-formats > summary::-webkit-details-marker { display: none; }
+.associated-formats > summary::before { content: '▸'; margin-right: 6px; color: #ff7046; }
+.associated-formats[open] > summary::before { content: '▾'; }
+.associated-formats[open] > summary { color: #ffd4c7; border-color: #75432f; }
+.format-file-list { display: grid; gap: 6px; margin-top: 7px; padding: 8px; border: 1px solid #302f34; border-radius: 9px; background: #0d0d10; }
 .format-file-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 8px; background: #17171a; }
 .format-file-copy { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
 .format-file-copy strong { color: #f1ede8; font-size: 12px; }
@@ -346,6 +350,7 @@ footer { padding: 20px 42px; color: #65646a; border-top: 1px solid #242428; font
 .format-file-copy span.missing-file, .sample-row span.missing-file { color: #ff987a; }
 .format-file-actions { display: flex; gap: 6px; }
 .format-file-actions > button { min-height: 34px; padding: 6px 10px; color: #d6d3d7; border: 1px solid #3b3a40; background: #202025; font-size: 10px; }
+.format-file-actions > button.destructive { color: #ff9a7c; border-color: transparent; background: transparent; }
 .format-file-row > audio { grid-column: 1 / -1; width: 100%; height: 36px; accent-color: #ff6335; }
 .associated-samples summary { padding: 13px 4px 7px; color: #c8c6cb; font-size: 11px; font-weight: 700; cursor: pointer; }
 .associated-samples summary::marker { color: #ff7046; }
@@ -362,13 +367,14 @@ footer { padding: 20px 42px; color: #65646a; border-top: 1px solid #242428; font
 .sample-rename input { min-width: 0; padding: 6px 8px; border: 1px solid #4a484f; border-radius: 6px; background: #0f0f12; font-size: 12px; }
 .sample-rename button { min-height: 30px; padding: 4px 7px; color: #d6d3d7; border: 1px solid #3b3a40; background: #202025; font-size: 9px; }
 .sample-menu { position: relative; }
-.sample-menu summary { display: grid; width: 34px; min-height: 34px; place-items: center; color: #aaa8ae; border: 1px solid #3b3a40; border-radius: 7px; background: #202025; cursor: pointer; list-style: none; }
+.sample-menu summary { display: grid; width: 36px; min-height: 34px; place-items: center; padding: 0 0 5px; color: #aaa8ae; border: 1px solid #3b3a40; border-radius: 7px; background: #202025; cursor: pointer; list-style: none; font-size: 14px; letter-spacing: 1px; line-height: 1; }
 .sample-menu summary::-webkit-details-marker { display: none; }
 .sample-menu[open] summary { color: #ffd4c7; border-color: #75432f; }
 .sample-menu > div { position: absolute; z-index: 8; top: calc(100% + 5px); right: 0; display: grid; min-width: 135px; padding: 5px; border: 1px solid #3b3a40; border-radius: 8px; background: #202025; box-shadow: 0 12px 30px rgba(0,0,0,.35); }
 .sample-menu > div button { width: 100%; justify-content: flex-start; color: #d6d3d7; border: 0; background: transparent; text-align: left; }
 .sample-menu > div button:hover { background: #2b2a30; }
 .sample-menu > div button.destructive { color: #ff9a7c; }
+.sample-menu .menu-separator { height: 1px; margin: 4px 3px; background: #3a393f; }
 .sample-editing { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #ffad91; font-size: 11px; }
 .sample-editing button { min-height: 30px; padding: 4px 9px; color: #aaa8ae; border: 0; background: transparent; font-size: 10px; }
 .sample-editing button:hover { color: #f4f1e8; background: #202025; }
@@ -380,9 +386,10 @@ footer { padding: 20px 42px; color: #65646a; border-top: 1px solid #242428; font
 .studio-entry > img, .studio-entry > .history-placeholder { width: 140px; height: 84px; }
 .studio-entry .history-copy > strong { font-size: 18px; }
 .studio-entry .history-actions { align-self: start; }
-.studio-entry .associated-samples { margin-top: 14px; padding: 0 2px 15px; border-top: 0; border-bottom: 1px solid #29282d; }
-.studio-entry .associated-samples summary { padding-top: 0; }
-.studio-entry .history-player { margin-top: 2px; padding: 24px 0 0; border-top: 1px solid #29282d; }
+.studio-entry .associated-samples { order: 2; margin-top: 18px; padding: 14px 2px 0; border-top: 1px solid #29282d; border-bottom: 0; }
+.studio-entry .associated-samples summary { display: flex; align-items: center; gap: 7px; padding: 0 2px 8px; color: #aaa8ae; }
+.studio-entry .associated-samples summary span { display: grid; min-width: 19px; height: 19px; place-items: center; color: #ffd4c7; border-radius: 10px; background: #332019; font-size: 9px; }
+.studio-entry .history-player { order: 1; margin-top: 2px; padding: 24px 0 0; border-top: 1px solid #29282d; }
 .studio-entry .waveform-panel { gap: 16px; }
 .studio-entry .waveform-loading { min-height: 220px; }
 .studio-entry .waveform-view { height: 220px; border-radius: 10px; }
