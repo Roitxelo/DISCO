@@ -99,6 +99,7 @@ function App(): React.JSX.Element {
   const [renamingSampleId, setRenamingSampleId] = useState('')
   const [sampleNameDraft, setSampleNameDraft] = useState('')
   const [openSampleMenuId, setOpenSampleMenuId] = useState('')
+  const [openSongMenuId, setOpenSongMenuId] = useState('')
   const [normalizeSample, setNormalizeSample] = useState(false)
   const [selectedBars, setSelectedBars] = useState<number | null>(null)
   const [organizeSearch, setOrganizeSearch] = useState('')
@@ -184,10 +185,16 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     function closeMenus(event: MouseEvent): void {
-      if (!(event.target as HTMLElement | null)?.closest('.sample-menu')) setOpenSampleMenuId('')
+      if (!(event.target as HTMLElement | null)?.closest('.action-menu')) {
+        setOpenSampleMenuId('')
+        setOpenSongMenuId('')
+      }
     }
     function closeMenusWithKeyboard(event: KeyboardEvent): void {
-      if (event.key === 'Escape') setOpenSampleMenuId('')
+      if (event.key === 'Escape') {
+        setOpenSampleMenuId('')
+        setOpenSongMenuId('')
+      }
     }
     document.addEventListener('click', closeMenus)
     document.addEventListener('keydown', closeMenusWithKeyboard)
@@ -294,15 +301,19 @@ function App(): React.JSX.Element {
   }
 
   async function removeHistory(id: string): Promise<void> {
+    setHistoryError('')
     const result = await window.disco.removeHistory(id)
     if (result.ok) {
       setHistory(result.entries)
+      const stillExists = result.entries.some((entry) => entry.id === id)
+      if (stillExists) return
       if (playingEntryId === id) {
         setPlayingEntryId('')
         setPlayingAudioFormat(null)
         setAudioSource('')
         setWaveformUrl('')
       }
+      await refreshAvailability()
     }
     else setHistoryError(result.error)
   }
@@ -479,6 +490,7 @@ function App(): React.JSX.Element {
     setPendingSampleName('')
     setRenamingSampleId('')
     setOpenSampleMenuId('')
+    setOpenSongMenuId('')
   }
 
   function prepareAnotherFormat(entry: HistoryEntry): void {
@@ -1185,9 +1197,16 @@ function App(): React.JSX.Element {
                     {view === 'sample' && !activeEntry && <button type="button" onClick={() => void openSampler(entry)}>Abrir editor</button>}
                     {view === 'collection' && <button type="button" disabled={availableAudioFiles[`${entry.id}:${entry.format}`] === false} onClick={() => void openSampler(entry)}>Samplear</button>}
                     {view === 'collection' && <button type="button" onClick={() => openIdentification(entry)}>Editar datos</button>}
-                    {view === 'collection' && <button type="button" onClick={() => prepareAnotherFormat(entry)}>Otro formato</button>}
-                    <button type="button" disabled={availableAudioFiles[`${entry.id}:${entry.format}`] === false} onClick={() => window.disco.revealFile(entry.filePath)}>Mostrar</button>
-                    {view !== 'sample' && <button className="remove-button" type="button" onClick={() => removeHistory(entry.id)}>Quitar</button>}
+                    {view === 'sample' && <button type="button" disabled={availableAudioFiles[`${entry.id}:${entry.format}`] === false} onClick={() => window.disco.revealFile(entry.filePath)}>Mostrar</button>}
+                    {view !== 'sample' && <details className="song-menu sample-menu action-menu" open={openSongMenuId === entry.id}>
+                      <summary aria-label={`Más acciones para ${entry.media.title}`} aria-expanded={openSongMenuId === entry.id} title="Más acciones" onClick={(event) => { event.preventDefault(); setOpenSampleMenuId(''); setOpenSongMenuId((current) => current === entry.id ? '' : entry.id) }}>•••</summary>
+                      <div>
+                        {view === 'collection' && <button type="button" onClick={() => { prepareAnotherFormat(entry); setOpenSongMenuId('') }}>Añadir otro formato</button>}
+                        <button type="button" disabled={availableAudioFiles[`${entry.id}:${entry.format}`] === false} onClick={() => { window.disco.revealFile(entry.filePath); setOpenSongMenuId('') }}>Mostrar archivo principal</button>
+                        <span className="menu-separator" aria-hidden="true" />
+                        <button className="destructive" type="button" onClick={() => { setOpenSongMenuId(''); void removeHistory(entry.id) }}>Quitar canción…</button>
+                      </div>
+                    </details>}
                   </div>
                   {view === 'collection' && (
                     <details className="associated-formats">
@@ -1239,8 +1258,8 @@ function App(): React.JSX.Element {
                             </div>
                             <div className="sample-row-actions">
                               <button type="button" disabled={availableSamples[`${entry.id}:${sample.id}`] === false} onClick={() => void toggleSamplePreview(entry.id, sample.id)}>{samplePreviewId === sample.id ? 'Cerrar' : 'Escuchar'}</button>
-                              <details className="sample-menu" open={openSampleMenuId === sample.id}>
-                                <summary aria-label={`Más acciones para ${sample.name}`} aria-expanded={openSampleMenuId === sample.id} title="Más acciones" onClick={(event) => { event.preventDefault(); setOpenSampleMenuId((current) => current === sample.id ? '' : sample.id) }}>•••</summary>
+                              <details className="sample-menu action-menu" open={openSampleMenuId === sample.id}>
+                                <summary aria-label={`Más acciones para ${sample.name}`} aria-expanded={openSampleMenuId === sample.id} title="Más acciones" onClick={(event) => { event.preventDefault(); setOpenSongMenuId(''); setOpenSampleMenuId((current) => current === sample.id ? '' : sample.id) }}>•••</summary>
                                 <div>
                                   {view === 'sample' && <button type="button" onClick={() => { editSample(sample); setOpenSampleMenuId('') }} disabled={editingSampleId === sample.id}>Editar</button>}
                                   {view === 'sample' && <button type="button" onClick={() => { duplicateSample(sample); setOpenSampleMenuId('') }}>Duplicar</button>}

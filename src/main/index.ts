@@ -279,7 +279,32 @@ app.whenReady().then(() => {
 
   ipcMain.handle('history:remove', async (_event, id: unknown): Promise<HistoryResult> => {
     if (typeof id !== 'string') return { ok: false, error: 'La entrada no es válida.' }
+    const entry = (await listHistory()).find((item) => item.id === id)
+    if (!entry) return { ok: false, error: 'La canción ya no está en la colección.' }
+    const formatCount = entry.audioFiles.length
+    const sampleCount = entry.samples.length
+    const detail = [
+      `${formatCount} ${formatCount === 1 ? 'archivo de audio asociado' : 'archivos de audio asociados'}.`,
+      sampleCount > 0
+        ? `${sampleCount} ${sampleCount === 1 ? 'sample exportado permanecerá' : 'samples exportados permanecerán'} en el disco, pero dejarán de aparecer en DISCO.`
+        : 'No tiene samples asociados.'
+    ].join(' ')
+    const choice = await dialog.showMessageBox({
+      type: 'warning',
+      title: 'Quitar canción',
+      message: `¿Qué quieres hacer con “${entry.media.title}”?`,
+      detail,
+      buttons: ['Cancelar', 'Quitar solo de DISCO', 'Eliminar también los audios'],
+      cancelId: 0,
+      defaultId: 0,
+      noLink: true
+    })
+    if (choice.response === 0) return { ok: true, entries: await listHistory() }
     try {
+      if (choice.response === 2) {
+        const paths = [...new Set(entry.audioFiles.map((file) => file.filePath))]
+        await Promise.all(paths.map((filePath) => rm(filePath, { force: true })))
+      }
       return { ok: true, entries: await removeHistoryEntry(id) }
     } catch {
       return { ok: false, error: 'No se pudo eliminar la entrada del historial.' }
