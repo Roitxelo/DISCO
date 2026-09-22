@@ -1,22 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react'
-import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../../shared/media'
+import { PROJECT_STATUSES, SAMPLE_FORMATS } from '../../shared/media'
 import type { AudioAnalysis, AudioFormat, DownloadProgress, HistoryEntry, MediaInfo, ProjectStatus, SampleFormat } from '../../shared/media'
 import { evaluateAnalysis } from './analysisEvaluation'
 import { Sidebar, Topbar } from './components/AppChrome'
 import type { AppView } from './components/AppChrome'
 import { DownloadView } from './views/DownloadView'
 import { IdentifyView } from './views/IdentifyView'
-
-type AppSettings = {
-  directory: string
-  downloadFormat: AudioFormat
-  sampleFormatMode: 'source' | 'fixed'
-  fixedSampleFormat: SampleFormat
-  normalizeSamples: boolean
-  loopSelection: boolean
-  reduceMotion: boolean
-}
+import { SettingsView } from './views/SettingsView'
+import type { AppSettings } from './views/SettingsView'
 
 const SETTINGS_KEY = 'disco:settings:v1'
 const DEFAULT_SETTINGS: AppSettings = {
@@ -1283,67 +1275,7 @@ function App(): React.JSX.Element {
           )}
         </section>}
 
-        {view === 'settings' && <section className="settings-view">
-          <div className="settings-intro">
-            <p className="eyebrow">AJUSTES</p>
-            <h1>Tu flujo, a tu manera.</h1>
-            <p className="intro">DISCO recordará estas preferencias la próxima vez que lo abras.</p>
-          </div>
-
-          <div className="settings-groups">
-            <section className="settings-group" aria-labelledby="download-settings-title">
-              <div><span className="settings-icon" aria-hidden="true">↓</span><div><h2 id="download-settings-title">Descargas</h2><p>Destino y formato que DISCO seleccionará al empezar.</p></div></div>
-              <label className="settings-row settings-folder">
-                <span><strong>Carpeta predeterminada</strong><small title={directory}>{directory || 'Todavía no has elegido una carpeta'}</small></span>
-                <button type="button" onClick={() => void selectFolder()}>{directory ? 'Cambiar' : 'Elegir'}</button>
-              </label>
-              <label className="settings-row">
-                <span><strong>Formato de descarga</strong><small>Se puede cambiar en cada descarga.</small></span>
-                <select value={settings.downloadFormat} onChange={(event) => {
-                  const value = event.target.value as AudioFormat
-                  setSettings((current) => ({ ...current, downloadFormat: value }))
-                  setFormat(value)
-                }}>
-                  {AUDIO_FORMATS.map((audioFormat) => <option value={audioFormat} key={audioFormat}>{audioFormat.toUpperCase()}</option>)}
-                </select>
-              </label>
-            </section>
-
-            <section className="settings-group" aria-labelledby="sample-settings-title">
-              <div><span className="settings-icon" aria-hidden="true">◫</span><div><h2 id="sample-settings-title">Samplea</h2><p>Valores iniciales para nuevos fragmentos.</p></div></div>
-              <label className="settings-row">
-                <span><strong>Formato inicial</strong><small>Seguir la fuente evita conversiones innecesarias.</small></span>
-                <select value={settings.sampleFormatMode} onChange={(event) => setSettings((current) => ({ ...current, sampleFormatMode: event.target.value as AppSettings['sampleFormatMode'] }))}>
-                  <option value="source">Seguir la fuente</option>
-                  <option value="fixed">Formato fijo</option>
-                </select>
-              </label>
-              {settings.sampleFormatMode === 'fixed' && <label className="settings-row">
-                <span><strong>Formato fijo</strong><small>Aplicado al abrir una canción en Samplea.</small></span>
-                <select value={settings.fixedSampleFormat} onChange={(event) => setSettings((current) => ({ ...current, fixedSampleFormat: event.target.value as SampleFormat }))}>
-                  {SAMPLE_FORMATS.map((sampleOption) => <option value={sampleOption} key={sampleOption}>{sampleOption.toUpperCase()}</option>)}
-                </select>
-              </label>}
-              <label className="settings-row toggle-row">
-                <span><strong>Normalizar samples</strong><small>Ajusta el pico a −1 dBFS por defecto.</small></span>
-                <input type="checkbox" checked={settings.normalizeSamples} onChange={(event) => setSettings((current) => ({ ...current, normalizeSamples: event.target.checked }))} />
-              </label>
-              <label className="settings-row toggle-row">
-                <span><strong>Repetir selección</strong><small>Activa el bucle al abrir Samplea.</small></span>
-                <input type="checkbox" checked={settings.loopSelection} onChange={(event) => setSettings((current) => ({ ...current, loopSelection: event.target.checked }))} />
-              </label>
-            </section>
-
-            <section className="settings-group" aria-labelledby="interface-settings-title">
-              <div><span className="settings-icon" aria-hidden="true">Aa</span><div><h2 id="interface-settings-title">Interfaz</h2><p>Comportamiento visual y accesibilidad.</p></div></div>
-              <label className="settings-row toggle-row">
-                <span><strong>Reducir animaciones</strong><small>Desactiva transiciones y movimientos decorativos.</small></span>
-                <input type="checkbox" checked={settings.reduceMotion} onChange={(event) => setSettings((current) => ({ ...current, reduceMotion: event.target.checked }))} />
-              </label>
-              <div className="settings-row app-version"><span><strong>Versión de DISCO</strong><small>Aplicación de escritorio</small></span><code>v{window.disco.version}</code></div>
-            </section>
-          </div>
-        </section>}
+        {view === 'settings' && <SettingsView settings={settings} directory={directory} version={window.disco.version} onChange={setSettings} onSelectFolder={() => void selectFolder()} onDownloadFormatChange={(value) => { setSettings((current) => ({ ...current, downloadFormat: value })); setFormat(value) }} />}
 
         {view === 'organize' && <section className="organize-view">
           <div className="organize-intro">
