@@ -10,6 +10,7 @@ import { IdentifyView } from './views/IdentifyView'
 import { SettingsView } from './views/SettingsView'
 import type { AppSettings } from './views/SettingsView'
 import { OrganizeView } from './views/OrganizeView'
+import { WaveformEditor } from './components/WaveformEditor'
 
 const SETTINGS_KEY = 'disco:settings:v1'
 const DEFAULT_SETTINGS: AppSettings = {
@@ -1117,48 +1118,7 @@ function App(): React.JSX.Element {
                   {view === 'sample' && playingEntryId === entry.id && audioSource && (
                     <div className="history-player">
                       <div className="waveform-panel">
-                        {waveformLoading && <div className="waveform-loading">Generando forma de onda…</div>}
-                        {waveformUrl && (
-                          <>
-                          <div
-                            className="waveform-view interactive-waveform"
-                            ref={waveformRef}
-                            onPointerDown={beginWaveformSelection}
-                            onPointerMove={moveWaveformSelection}
-                            onPointerUp={endWaveformSelection}
-                            onPointerCancel={endWaveformSelection}
-                            onWheel={handleWaveformWheel}
-                          >
-                            <img
-                              src={waveformUrl}
-                              alt="Forma de onda del audio. Arrastra para seleccionar un fragmento o mueve la selección desde su interior. Usa Control y la rueda para ampliar."
-                              draggable="false"
-                              style={{
-                                width: `${waveformZoom * 100}%`,
-                                left: `${-(waveformViewStart / Math.max(audioDuration, 1)) * waveformZoom * 100}%`
-                              }}
-                            />
-                            {audioDuration > 0 && (
-                              <>
-                                {selectionVisible && <div
-                                  className={`waveform-selection ${selectionStart < waveformViewStart ? 'clipped-start' : ''} ${selectionEnd > waveformViewEnd ? 'clipped-end' : ''}`}
-                                  onPointerDown={beginSelectionMove}
-                                  style={{
-                                    left: `${waveformPercent(visibleSelectionStart)}%`,
-                                    width: `${waveformPercent(visibleSelectionEnd) - waveformPercent(visibleSelectionStart)}%`
-                                  }}
-                                >
-                                  {selectionStart >= waveformViewStart && <button className="selection-handle start" type="button" aria-label={`Ajustar inicio, ${formatTimestamp(selectionStart)}`} onPointerDown={(event) => beginHandleDrag(event, 'start')} onKeyDown={(event) => adjustSelectionEdge('start', event)} />}
-                                  {selectionEnd <= waveformViewEnd && <button className="selection-handle end" type="button" aria-label={`Ajustar final, ${formatTimestamp(selectionEnd)}`} onPointerDown={(event) => beginHandleDrag(event, 'end')} onKeyDown={(event) => adjustSelectionEdge('end', event)} />}
-                                </div>}
-                                {playheadVisible && <div className="waveform-playhead" aria-hidden="true" style={{ left: `${waveformPercent(playheadTime)}%` }} />}
-                                <button className="waveform-zoom" type="button" onClick={resetWaveformZoom} aria-label={`Zoom ${waveformZoom.toFixed(1)}. Restablecer vista completa.`}>{waveformZoom.toFixed(1)}×</button>
-                              </>
-                            )}
-                          </div>
-                          {audioDuration > 0 && <div className="waveform-scale" aria-hidden="true"><span>{formatTimestamp(waveformViewStart)}</span><span>{formatTimestamp(waveformViewStart + waveformViewDuration / 2)}</span><span>{formatTimestamp(waveformViewEnd)}</span></div>}
-                          </>
-                        )}
+                        <WaveformEditor containerRef={waveformRef} loading={waveformLoading} imageUrl={waveformUrl} zoom={waveformZoom} audioDuration={audioDuration} viewStart={waveformViewStart} viewEnd={waveformViewEnd} selectionStart={selectionStart} selectionEnd={selectionEnd} visibleSelectionStart={visibleSelectionStart} visibleSelectionEnd={visibleSelectionEnd} selectionVisible={selectionVisible} playheadTime={playheadTime} playheadVisible={playheadVisible} formatTime={formatTimestamp} percent={waveformPercent} onSelectionStart={beginWaveformSelection} onSelectionMove={moveWaveformSelection} onSelectionEnd={endWaveformSelection} onWheel={handleWaveformWheel} onMoveSelection={beginSelectionMove} onHandleStart={beginHandleDrag} onHandleKey={adjustSelectionEdge} onResetZoom={resetWaveformZoom} />
                         {audioDuration > 0 && (
                           <div className="selection-controls">
                             <label>

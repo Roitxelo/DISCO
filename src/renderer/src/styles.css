@@ -181,6 +181,8 @@ button:disabled { color: #77747a; background: #29282d; cursor: not-allowed; }
 .waveform-view img { position: absolute; top: 0; height: 100%; opacity: .42; object-fit: fill; }
 .waveform-selection { position: absolute; top: 0; bottom: 0; min-width: 2px; border-inline: 1px solid #ff8a67; background: rgba(255, 99, 53, .22); cursor: grab; pointer-events: auto; }
 .waveform-selection:active { cursor: grabbing; }
+.selection-drag-hint { position: absolute; left: 50%; bottom: 9px; translate: -50% 0; padding: 3px 7px; color: rgba(255, 232, 223, .78); border-radius: 4px; background: rgba(20, 12, 10, .58); font-size: 9px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .14s ease; }
+.waveform-selection:hover .selection-drag-hint { opacity: 1; }
 .waveform-selection.clipped-start { border-left: 0; }
 .waveform-selection.clipped-end { border-right: 0; }
 .interactive-waveform { touch-action: none; user-select: none; cursor: crosshair; }
