@@ -111,9 +111,11 @@ function App(): React.JSX.Element {
   const [availableSamples, setAvailableSamples] = useState<Record<string, boolean>>({})
   const audioRef = useRef<HTMLAudioElement>(null)
   const waveformRef = useRef<HTMLDivElement>(null)
-  const dragModeRef = useRef<'selection' | 'start' | 'end' | null>(null)
+  const dragModeRef = useRef<'selection' | 'move' | 'start' | 'end' | null>(null)
   const dragAnchorRef = useRef(0)
   const dragStartXRef = useRef(0)
+  const dragSelectionStartRef = useRef(0)
+  const dragSelectionEndRef = useRef(0)
   const playbackUsesSelectionRef = useRef(false)
   const evaluation = useMemo(() => evaluateAnalysis(history), [history])
   const pendingEntries = useMemo(
@@ -713,17 +715,38 @@ function App(): React.JSX.Element {
     waveformRef.current?.setPointerCapture(event.pointerId)
   }
 
+  function beginSelectionMove(event: ReactPointerEvent<HTMLDivElement>): void {
+    event.stopPropagation()
+    dragModeRef.current = 'move'
+    dragAnchorRef.current = timeFromWaveformPointer(event)
+    dragStartXRef.current = event.clientX
+    dragSelectionStartRef.current = selectionStart
+    dragSelectionEndRef.current = selectionEnd
+    waveformRef.current?.setPointerCapture(event.pointerId)
+  }
+
   function moveWaveformSelection(event: ReactPointerEvent<HTMLDivElement>): void {
     const mode = dragModeRef.current
     if (!mode || !audioDuration) return
     const time = timeFromWaveformPointer(event)
-    setSelectedBars(null)
+    if (mode !== 'move') setSelectedBars(null)
     if (mode === 'start') {
       setSelectionStart(Math.min(time, selectionEnd - 0.05))
       return
     }
     if (mode === 'end') {
       setSelectionEnd(Math.max(time, selectionStart + 0.05))
+      return
+    }
+    if (mode === 'move') {
+      const duration = dragSelectionEndRef.current - dragSelectionStartRef.current
+      const offset = time - dragAnchorRef.current
+      const start = Math.min(
+        Math.max(0, dragSelectionStartRef.current + offset),
+        Math.max(0, audioDuration - duration)
+      )
+      setSelectionStart(start)
+      setSelectionEnd(Math.min(audioDuration, start + duration))
       return
     }
     const start = Math.min(dragAnchorRef.current, time)
@@ -747,6 +770,11 @@ function App(): React.JSX.Element {
       const player = audioRef.current
       if (player) player.currentTime = start
       setPlayheadTime(start)
+      playbackUsesSelectionRef.current = true
+    } else if (mode === 'move') {
+      const player = audioRef.current
+      if (player) player.currentTime = selectionStart
+      setPlayheadTime(selectionStart)
       playbackUsesSelectionRef.current = true
     }
     dragModeRef.current = null
@@ -1298,7 +1326,7 @@ function App(): React.JSX.Element {
                           >
                             <img
                               src={waveformUrl}
-                              alt="Forma de onda del audio. Arrastra para seleccionar un fragmento. Usa Control y la rueda para ampliar."
+                              alt="Forma de onda del audio. Arrastra para seleccionar un fragmento o mueve la selección desde su interior. Usa Control y la rueda para ampliar."
                               draggable="false"
                               style={{
                                 width: `${waveformZoom * 100}%`,
@@ -1309,6 +1337,7 @@ function App(): React.JSX.Element {
                               <>
                                 {selectionVisible && <div
                                   className={`waveform-selection ${selectionStart < waveformViewStart ? 'clipped-start' : ''} ${selectionEnd > waveformViewEnd ? 'clipped-end' : ''}`}
+                                  onPointerDown={beginSelectionMove}
                                   style={{
                                     left: `${waveformPercent(visibleSelectionStart)}%`,
                                     width: `${waveformPercent(visibleSelectionEnd) - waveformPercent(visibleSelectionStart)}%`
