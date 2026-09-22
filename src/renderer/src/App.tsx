@@ -12,7 +12,6 @@ import type { AppSettings } from './views/SettingsView'
 import { OrganizeView } from './views/OrganizeView'
 import { WaveformEditor } from './components/WaveformEditor'
 import { CollectionToolbar } from './components/CollectionToolbar'
-import type { CollectionSort } from './components/CollectionToolbar'
 
 const SETTINGS_KEY = 'disco:settings:v1'
 const DEFAULT_SETTINGS: AppSettings = {
@@ -128,7 +127,6 @@ function App(): React.JSX.Element {
   const [organizeStatus, setOrganizeStatus] = useState<ProjectStatus | 'all'>('all')
   const [organizeTag, setOrganizeTag] = useState('all')
   const [collectionSearch, setCollectionSearch] = useState('')
-  const [collectionSort, setCollectionSort] = useState<CollectionSort>('recent')
   const [tagDrafts, setTagDrafts] = useState<Record<string, string>>({})
   const [availableAudioFiles, setAvailableAudioFiles] = useState<Record<string, boolean>>({})
   const [availableSamples, setAvailableSamples] = useState<Record<string, boolean>>({})
@@ -155,15 +153,9 @@ function App(): React.JSX.Element {
   )
   const filteredCollectionEntries = useMemo(() => {
     const search = collectionSearch.trim().toLocaleLowerCase('es')
-    return [...collectionEntries]
+    return collectionEntries
       .filter((entry) => !search || `${entry.media.title} ${entry.media.channel}`.toLocaleLowerCase('es').includes(search))
-      .sort((left, right) => {
-        if (collectionSort === 'title') return left.media.title.localeCompare(right.media.title, 'es')
-        if (collectionSort === 'bpm') return (left.analysis?.bpm ?? Number.MAX_SAFE_INTEGER) - (right.analysis?.bpm ?? Number.MAX_SAFE_INTEGER)
-        if (collectionSort === 'key') return (left.analysis?.camelot ?? 'ZZ').localeCompare(right.analysis?.camelot ?? 'ZZ', 'es')
-        return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
-      })
-  }, [collectionEntries, collectionSearch, collectionSort])
+  }, [collectionEntries, collectionSearch])
   const organizedEntries = useMemo(() => {
     const search = organizeSearch.trim().toLocaleLowerCase('es')
     return collectionEntries.filter((entry) => {
@@ -998,7 +990,7 @@ function App(): React.JSX.Element {
               ? <button className="change-song" type="button" onClick={closeSampler}>Cambiar canción</button>
               : <span>{visibleEntries.length} {visibleEntries.length === 1 ? 'canción' : 'canciones'}</span>}
           </div>
-          {view === 'collection' && <CollectionToolbar search={collectionSearch} sort={collectionSort} onSearchChange={setCollectionSearch} onSortChange={setCollectionSort} />}
+          {view === 'collection' && <CollectionToolbar search={collectionSearch} onSearchChange={setCollectionSearch} />}
           {view === 'identify' && <details className="evaluation-panel">
             <summary>
               <span>Calidad del análisis</span>
@@ -1223,13 +1215,16 @@ function App(): React.JSX.Element {
                         preload="metadata"
                         onLoadedMetadata={(event) => {
                           const duration = event.currentTarget.duration
+                          const bpm = activeEntry?.analysis?.bpm
+                          const fourBars = bpm ? (4 * 4 * 60) / bpm : 10
+                          const initialSelectionEnd = Math.min(duration, fourBars)
                           setAudioDuration(duration)
                           setPlayheadTime(0)
                           setWaveformZoom(1)
                           setWaveformViewStart(0)
                           setSelectionStart(0)
-                          setSelectionEnd(duration)
-                          setSelectedBars(null)
+                          setSelectionEnd(initialSelectionEnd)
+                          setSelectedBars(bpm && initialSelectionEnd === fourBars ? 4 : null)
                         }}
                         onTimeUpdate={keepPlaybackInsideSelection}
                         onPlay={() => setIsPlaying(true)}
