@@ -5,7 +5,7 @@ import { rename, rm, stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
-import { AUDIO_FORMATS, SAMPLE_FORMATS } from '../shared/media'
+import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../shared/media'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
 import { analyzeAudio } from './services/audioAnalysis'
 import { generateWaveform } from './services/waveform'
@@ -19,6 +19,7 @@ import {
   removeHistoryEntry,
   saveHistoryEntry,
   setPrimaryHistoryAudioFile,
+  updateHistoryOrganization,
   updateHistoryAnalysis
 } from './services/history'
 import type {
@@ -34,7 +35,8 @@ import type {
   SampleExportRequest,
   SampleExportResult,
   SampleRenameRequest,
-  HistoryAudioFileRequest
+  HistoryAudioFileRequest,
+  HistoryOrganizationUpdate
 } from '../shared/media'
 
 protocol.registerSchemesAsPrivileged([
@@ -274,6 +276,29 @@ app.whenReady().then(() => {
       return { ok: true, entries: await removeHistoryAudioFile(request.historyId, request.format) }
     } catch {
       return { ok: false, error: 'No se pudo eliminar el formato.' }
+    }
+  })
+
+  ipcMain.handle('history:update-organization', async (
+    _event,
+    request: HistoryOrganizationUpdate
+  ): Promise<HistoryResult> => {
+    if (!request || typeof request.historyId !== 'string') {
+      return { ok: false, error: 'La canción no es válida.' }
+    }
+    if (request.favorite !== undefined && typeof request.favorite !== 'boolean') {
+      return { ok: false, error: 'El favorito no es válido.' }
+    }
+    if (request.tags !== undefined && (!Array.isArray(request.tags) || request.tags.some((tag) => typeof tag !== 'string'))) {
+      return { ok: false, error: 'Las etiquetas no son válidas.' }
+    }
+    if (request.projectStatus !== undefined && !PROJECT_STATUSES.includes(request.projectStatus)) {
+      return { ok: false, error: 'El estado de proyecto no es válido.' }
+    }
+    try {
+      return { ok: true, entries: await updateHistoryOrganization(request) }
+    } catch {
+      return { ok: false, error: 'No se pudo actualizar la organización.' }
     }
   })
 

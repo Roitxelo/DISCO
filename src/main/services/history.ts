@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { app } from 'electron'
-import type { AudioFormat, HistoryAnalysisUpdate, HistoryEntry, HistorySaveRequest } from '../../shared/media'
+import { PROJECT_STATUSES } from '../../shared/media'
+import type { AudioFormat, HistoryAnalysisUpdate, HistoryEntry, HistoryOrganizationUpdate, HistorySaveRequest } from '../../shared/media'
 
 const MAX_ENTRIES = 200
 
@@ -24,7 +25,10 @@ async function readHistory(): Promise<HistoryEntry[]> {
       samples: (entry.samples ?? []).map((sample, index) => ({
         ...sample,
         name: sample.name ?? `Sample ${String(index + 1).padStart(2, '0')}`
-      }))
+      })),
+      favorite: entry.favorite ?? false,
+      tags: entry.tags ?? [],
+      projectStatus: entry.projectStatus ?? ((entry.samples?.length ?? 0) > 0 ? 'sampled' : 'new')
     }))
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
@@ -73,7 +77,10 @@ export async function saveHistoryEntry(request: HistorySaveRequest): Promise<His
     analysisReview: 'pending',
     reviewedAt: null,
     audioFiles: [{ format: request.format, filePath: request.filePath, createdAt: new Date().toISOString() }],
-    samples: []
+    samples: [],
+    favorite: false,
+    tags: [],
+    projectStatus: 'new'
   }
   const updated = [entry, ...entries].slice(0, MAX_ENTRIES)
   await writeHistory(updated)
@@ -150,6 +157,26 @@ export async function removeHistoryAudioFile(id: string, format: AudioFormat): P
       audioFiles,
       format: primary?.format ?? entry.format,
       filePath: primary?.filePath ?? entry.filePath
+    }
+  })
+  await writeHistory(updated)
+  return updated
+}
+
+export async function updateHistoryOrganization(request: HistoryOrganizationUpdate): Promise<HistoryEntry[]> {
+  const entries = await readHistory()
+  const updated = entries.map((entry) => {
+    if (entry.id !== request.historyId) return entry
+    const tags = request.tags
+      ? [...new Set(request.tags.map((tag) => tag.trim().replace(/\s+/g, ' ').slice(0, 30)).filter(Boolean))].slice(0, 12)
+      : entry.tags
+    return {
+      ...entry,
+      favorite: typeof request.favorite === 'boolean' ? request.favorite : entry.favorite,
+      tags,
+      projectStatus: request.projectStatus && PROJECT_STATUSES.includes(request.projectStatus)
+        ? request.projectStatus
+        : entry.projectStatus
     }
   })
   await writeHistory(updated)

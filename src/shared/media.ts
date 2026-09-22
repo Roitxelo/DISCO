@@ -13,6 +13,8 @@ export type AnalyzeResult =
 
 export const AUDIO_FORMATS = ['wav', 'mp3', 'flac', 'm4a'] as const
 export type AudioFormat = (typeof AUDIO_FORMATS)[number]
+export const PROJECT_STATUSES = ['new', 'reviewing', 'sampled', 'archived'] as const
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number]
 
 export type DownloadRequest = {
   url: string
@@ -61,11 +63,14 @@ export type HistoryEntry = {
     normalizePeak: boolean
     createdAt: string
   }>
+  favorite: boolean
+  tags: string[]
+  projectStatus: ProjectStatus
 }
 
 export type HistorySaveRequest = Omit<
   HistoryEntry,
-  'id' | 'createdAt' | 'detectedAnalysis' | 'analysisReview' | 'reviewedAt' | 'audioFiles' | 'samples'
+  'id' | 'createdAt' | 'detectedAnalysis' | 'analysisReview' | 'reviewedAt' | 'audioFiles' | 'samples' | 'favorite' | 'tags' | 'projectStatus'
 >
 
 export type HistoryAnalysisUpdate = {
@@ -108,6 +113,13 @@ export type SampleRenameRequest = {
 export type HistoryAudioFileRequest = {
   historyId: string
   format: AudioFormat
+}
+
+export type HistoryOrganizationUpdate = {
+  historyId: string
+  favorite?: boolean
+  tags?: string[]
+  projectStatus?: ProjectStatus
 }
 
 export type SampleExportResult =

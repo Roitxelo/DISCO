@@ -12,7 +12,8 @@ import type {
   SampleExportRequest,
   SampleExportResult,
   SampleRenameRequest,
-  HistoryAudioFileRequest
+  HistoryAudioFileRequest,
+  HistoryOrganizationUpdate
 } from '../shared/media'
 
 contextBridge.exposeInMainWorld('disco', {
@@ -36,6 +37,8 @@ contextBridge.exposeInMainWorld('disco', {
     ipcRenderer.invoke('history:audio-primary', request),
   removeAudioFile: (request: HistoryAudioFileRequest): Promise<HistoryResult> =>
     ipcRenderer.invoke('history:audio-remove', request),
+  updateOrganization: (request: HistoryOrganizationUpdate): Promise<HistoryResult> =>
+    ipcRenderer.invoke('history:update-organization', request),
   getSampleSource: (historyId: string, sampleId: string): Promise<AudioSourceResult> =>
     ipcRenderer.invoke('history:sample-source', historyId, sampleId),
   renameSample: (request: SampleRenameRequest): Promise<HistoryResult> =>

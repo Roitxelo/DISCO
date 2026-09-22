@@ -13,7 +13,8 @@ import type {
   SampleExportRequest,
   SampleExportResult,
   SampleRenameRequest,
-  HistoryAudioFileRequest
+  HistoryAudioFileRequest,
+  HistoryOrganizationUpdate
 } from '../shared/media'
 
 declare global {
@@ -32,6 +33,7 @@ declare global {
       getAudioSource: (request: HistoryAudioFileRequest) => Promise<AudioSourceResult>
       setPrimaryAudioFile: (request: HistoryAudioFileRequest) => Promise<HistoryResult>
       removeAudioFile: (request: HistoryAudioFileRequest) => Promise<HistoryResult>
+      updateOrganization: (request: HistoryOrganizationUpdate) => Promise<HistoryResult>
       getSampleSource: (historyId: string, sampleId: string) => Promise<AudioSourceResult>
       renameSample: (request: SampleRenameRequest) => Promise<HistoryResult>
       removeSample: (historyId: string, sampleId: string) => Promise<HistoryResult>

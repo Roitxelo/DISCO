@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react'
-import { AUDIO_FORMATS, SAMPLE_FORMATS } from '../../shared/media'
-import type { AudioAnalysis, AudioFormat, HistoryEntry, MediaInfo, SampleFormat } from '../../shared/media'
+import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../../shared/media'
+import type { AudioAnalysis, AudioFormat, HistoryEntry, MediaInfo, ProjectStatus, SampleFormat } from '../../shared/media'
 import { evaluateAnalysis } from './analysisEvaluation'
 
 type AppView = 'download' | 'identify' | 'sample' | 'collection' | 'organize'
@@ -9,6 +9,12 @@ type AppView = 'download' | 'identify' | 'sample' | 'collection' | 'organize'
 const MUSICAL_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
 const CAMELOT_MAJOR = ['8B', '3B', '10B', '5B', '12B', '7B', '2B', '9B', '4B', '11B', '6B', '1B']
 const CAMELOT_MINOR = ['5A', '12A', '7A', '2A', '9A', '4A', '11A', '6A', '1A', '8A', '3A', '10A']
+const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+  new: 'Nueva',
+  reviewing: 'En proceso',
+  sampled: 'Sampleada',
+  archived: 'Archivada'
+}
 
 function camelotFor(key: string, mode: AudioAnalysis['mode']): string {
   const index = MUSICAL_KEYS.indexOf(key as (typeof MUSICAL_KEYS)[number])
@@ -88,6 +94,11 @@ function App(): React.JSX.Element {
   const [sampleNameDraft, setSampleNameDraft] = useState('')
   const [normalizeSample, setNormalizeSample] = useState(false)
   const [selectedBars, setSelectedBars] = useState<number | null>(null)
+  const [organizeSearch, setOrganizeSearch] = useState('')
+  const [organizeFavoritesOnly, setOrganizeFavoritesOnly] = useState(false)
+  const [organizeStatus, setOrganizeStatus] = useState<ProjectStatus | 'all'>('all')
+  const [organizeTag, setOrganizeTag] = useState('all')
+  const [tagDrafts, setTagDrafts] = useState<Record<string, string>>({})
   const audioRef = useRef<HTMLAudioElement>(null)
   const waveformRef = useRef<HTMLDivElement>(null)
   const dragModeRef = useRef<'selection' | 'start' | 'end' | null>(null)
@@ -103,6 +114,20 @@ function App(): React.JSX.Element {
     () => history.filter((entry) => entry.analysisReview !== 'pending'),
     [history]
   )
+  const availableTags = useMemo(
+    () => [...new Set(collectionEntries.flatMap((entry) => entry.tags))].sort((a, b) => a.localeCompare(b, 'es')),
+    [collectionEntries]
+  )
+  const organizedEntries = useMemo(() => {
+    const search = organizeSearch.trim().toLocaleLowerCase('es')
+    return collectionEntries.filter((entry) => {
+      const matchesSearch = !search || `${entry.media.title} ${entry.media.channel} ${entry.tags.join(' ')}`.toLocaleLowerCase('es').includes(search)
+      const matchesFavorite = !organizeFavoritesOnly || entry.favorite
+      const matchesStatus = organizeStatus === 'all' || entry.projectStatus === organizeStatus
+      const matchesTag = organizeTag === 'all' || entry.tags.includes(organizeTag)
+      return matchesSearch && matchesFavorite && matchesStatus && matchesTag
+    })
+  }, [collectionEntries, organizeFavoritesOnly, organizeSearch, organizeStatus, organizeTag])
   const activeEntry = useMemo(
     () => history.find((entry) => entry.id === playingEntryId) ?? null,
     [history, playingEntryId]
@@ -348,6 +373,28 @@ function App(): React.JSX.Element {
       setFormatPreviewKey('')
       setFormatPreviewUrl('')
     }
+  }
+
+  async function updateOrganization(
+    historyId: string,
+    update: { favorite?: boolean; tags?: string[]; projectStatus?: ProjectStatus }
+  ): Promise<void> {
+    setHistoryError('')
+    const result = await window.disco.updateOrganization({ historyId, ...update })
+    if (result.ok) setHistory(result.entries)
+    else setHistoryError(result.error)
+  }
+
+  async function addTag(entry: HistoryEntry): Promise<void> {
+    const tag = (tagDrafts[entry.id] ?? '').trim().replace(/\s+/g, ' ')
+    if (!tag || entry.tags.some((current) => current.toLocaleLowerCase('es') === tag.toLocaleLowerCase('es'))) return
+    await updateOrganization(entry.id, { tags: [...entry.tags, tag] })
+    setTagDrafts((current) => ({ ...current, [entry.id]: '' }))
+  }
+
+  async function removeTag(entry: HistoryEntry, tag: string): Promise<void> {
+    await updateOrganization(entry.id, { tags: entry.tags.filter((current) => current !== tag) })
+    if (organizeTag === tag) setOrganizeTag('all')
   }
 
   function closeSampler(): void {
@@ -1276,13 +1323,80 @@ function App(): React.JSX.Element {
         </section>}
 
         {view === 'organize' && <section className="organize-view">
-          <div className="organize-intro"><p className="eyebrow">ORGANIZA</p><h1>Tu colección, con contexto.</h1><p className="intro">Carpetas, etiquetas, favoritos y estados de proyecto estarán aquí sin alterar los archivos originales.</p></div>
-          <div className="organize-grid">
-            <article><span className="organize-icon">★</span><div><strong>Favoritos</strong><small>Acceso rápido a tus mejores hallazgos</small></div><b>0</b></article>
-            <article><span className="organize-icon">#</span><div><strong>Etiquetas</strong><small>Agrupa por género, energía o uso</small></div><b>Próximamente</b></article>
-            <article><span className="organize-icon">□</span><div><strong>Proyectos</strong><small>Organiza canciones y samples por beat</small></div><b>Próximamente</b></article>
+          <div className="organize-intro">
+            <p className="eyebrow">ORGANIZA</p>
+            <h1>Tu colección, con contexto.</h1>
+            <p className="intro">Encuentra cada idea por su estado, tus favoritos o las etiquetas que tú decidas.</p>
           </div>
-          <details className="evaluation-panel organize-evaluation"><summary><span>Calidad del análisis</span><span>{evaluation.reviewed} revisados · {evaluation.pending} pendientes</span></summary><div className="evaluation-content"><div className="evaluation-metrics"><article><span>BPM ±1</span><strong>{evaluation.bpmAccuracy}%</strong></article><article><span>Tónica</span><strong>{evaluation.tonicAccuracy}%</strong></article><article><span>Mayor / menor</span><strong>{evaluation.modeAccuracy}%</strong></article><article><span>Tonalidad completa</span><strong>{evaluation.fullKeyAccuracy}%</strong></article></div></div></details>
+
+          <div className="organize-overview" aria-label="Resumen de la colección">
+            <button type="button" className={organizeFavoritesOnly ? 'active' : ''} aria-pressed={organizeFavoritesOnly} onClick={() => setOrganizeFavoritesOnly((current) => !current)}>
+              <span>★</span><strong>{collectionEntries.filter((entry) => entry.favorite).length}</strong><small>Favoritas</small>
+            </button>
+            {PROJECT_STATUSES.map((status) => (
+              <button type="button" className={organizeStatus === status ? 'active' : ''} aria-pressed={organizeStatus === status} key={status} onClick={() => setOrganizeStatus((current) => current === status ? 'all' : status)}>
+                <strong>{collectionEntries.filter((entry) => entry.projectStatus === status).length}</strong><small>{PROJECT_STATUS_LABELS[status]}</small>
+              </button>
+            ))}
+          </div>
+
+          <div className="organize-toolbar" aria-label="Filtros de colección">
+            <label className="organize-search">
+              <span className="visually-hidden">Buscar canciones o etiquetas</span>
+              <input type="search" value={organizeSearch} placeholder="Buscar canción, artista o etiqueta…" onChange={(event) => setOrganizeSearch(event.target.value)} />
+            </label>
+            <label>
+              <span>Estado</span>
+              <select value={organizeStatus} onChange={(event) => setOrganizeStatus(event.target.value as ProjectStatus | 'all')}>
+                <option value="all">Todos</option>
+                {PROJECT_STATUSES.map((status) => <option value={status} key={status}>{PROJECT_STATUS_LABELS[status]}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Etiqueta</span>
+              <select value={organizeTag} onChange={(event) => setOrganizeTag(event.target.value)}>
+                <option value="all">Todas</option>
+                {availableTags.map((tag) => <option value={tag} key={tag}>{tag}</option>)}
+              </select>
+            </label>
+            {(organizeSearch || organizeFavoritesOnly || organizeStatus !== 'all' || organizeTag !== 'all') && (
+              <button className="clear-filters" type="button" onClick={() => { setOrganizeSearch(''); setOrganizeFavoritesOnly(false); setOrganizeStatus('all'); setOrganizeTag('all') }}>Limpiar</button>
+            )}
+          </div>
+
+          {historyError && <p className="error" role="alert">{historyError}</p>}
+          <div className="organize-results-heading"><strong>{organizedEntries.length} {organizedEntries.length === 1 ? 'canción' : 'canciones'}</strong><span>Los cambios se guardan automáticamente</span></div>
+          {organizedEntries.length === 0 ? <p className="empty-library">No hay canciones que coincidan con estos filtros.</p> : (
+            <div className="organized-list">
+              {organizedEntries.map((entry) => (
+                <article className="organized-entry" key={entry.id}>
+                  <button className={`favorite-button ${entry.favorite ? 'active' : ''}`} type="button" aria-label={entry.favorite ? `Quitar ${entry.media.title} de favoritos` : `Añadir ${entry.media.title} a favoritos`} aria-pressed={entry.favorite} onClick={() => void updateOrganization(entry.id, { favorite: !entry.favorite })}>★</button>
+                  {entry.media.thumbnailUrl ? <img src={entry.media.thumbnailUrl} alt="" /> : <div className="organized-placeholder" />}
+                  <div className="organized-copy">
+                    <strong title={entry.media.title}>{entry.media.title}</strong>
+                    <span>{entry.media.channel}{entry.analysis ? ` · ${entry.analysis.bpm.toFixed(1)} BPM · ${entry.analysis.camelot}` : ''}</span>
+                    <div className="organized-tags">
+                      {entry.tags.map((tag) => <button type="button" key={tag} title={`Quitar etiqueta ${tag}`} onClick={() => void removeTag(entry, tag)}>#{tag}<span aria-hidden="true"> ×</span></button>)}
+                      {entry.tags.length === 0 && <small>Sin etiquetas</small>}
+                    </div>
+                  </div>
+                  <label className="status-control">
+                    <span className="visually-hidden">Estado de {entry.media.title}</span>
+                    <select value={entry.projectStatus} onChange={(event) => void updateOrganization(entry.id, { projectStatus: event.target.value as ProjectStatus })}>
+                      {PROJECT_STATUSES.map((status) => <option value={status} key={status}>{PROJECT_STATUS_LABELS[status]}</option>)}
+                    </select>
+                  </label>
+                  <details className="tag-editor">
+                    <summary aria-label={`Añadir etiqueta a ${entry.media.title}`}>+ Etiqueta</summary>
+                    <form onSubmit={(event) => { event.preventDefault(); void addTag(entry) }}>
+                      <input value={tagDrafts[entry.id] ?? ''} maxLength={30} placeholder="Ej. soul, oscuro…" aria-label="Nueva etiqueta" onChange={(event) => setTagDrafts((current) => ({ ...current, [entry.id]: event.target.value }))} />
+                      <button type="submit" disabled={!(tagDrafts[entry.id] ?? '').trim()}>Añadir</button>
+                    </form>
+                  </details>
+                </article>
+              ))}
+            </div>
+          )}
         </section>}
       </section>
 
