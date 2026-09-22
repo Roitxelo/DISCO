@@ -96,6 +96,7 @@ async function downloadBinary(targetPath: string): Promise<void> {
     }
 
     if (platform() !== 'win32') await chmod(temporaryPath, 0o755)
+    await rm(targetPath, { force: true })
     await rename(temporaryPath, targetPath)
   } catch (error) {
     await rm(temporaryPath, { force: true })
@@ -103,21 +104,28 @@ async function downloadBinary(targetPath: string): Promise<void> {
   }
 }
 
-async function ensureBinary(): Promise<string> {
+async function ensureBinary(forceDownload = false): Promise<string> {
   const binDirectory = join(app.getPath('userData'), 'bin')
   const binaryPath = join(binDirectory, assetName())
   await mkdir(binDirectory, { recursive: true })
 
-  if (!(await fileExists(binaryPath))) await downloadBinary(binaryPath)
+  if (forceDownload || !(await fileExists(binaryPath))) await downloadBinary(binaryPath)
   return binaryPath
 }
 
-function getBinary(): Promise<string> {
-  binaryPromise ??= ensureBinary().catch((error) => {
+function getBinary(forceDownload = false): Promise<string> {
+  if (forceDownload) binaryPromise = null
+  binaryPromise ??= ensureBinary(forceDownload).catch((error) => {
     binaryPromise = null
     throw error
   })
   return binaryPromise
+}
+
+function isForbiddenError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  const processError = error as Error & { stderr?: string }
+  return `${error.message}\n${processError.stderr ?? ''}`.includes('HTTP Error 403')
 }
 
 export function getFfmpegPath(): string {
@@ -181,15 +189,16 @@ export async function downloadAudio(
   const directoryInfo = await stat(directory).catch(() => null)
   if (!directoryInfo?.isDirectory()) throw new Error('Selecciona una carpeta de destino válida.')
 
-  const binaryPath = await getBinary()
   const outputTemplate = join(directory, '%(title).180B [%(id)s].%(ext)s')
   const downloadStartedAt = Date.now()
-  const { stdout } = await execFileAsync(
-    binaryPath,
-    [
+  const commonArguments = [
       '--no-playlist',
       '--newline',
       '--no-warnings',
+      '--retries',
+      '3',
+      '--fragment-retries',
+      '3',
       '--extract-audio',
       '--audio-format',
       format,
@@ -200,11 +209,45 @@ export async function downloadAudio(
       '--output',
       outputTemplate,
       '--print',
-      'after_move:filepath',
-      url.href
-    ],
-    { timeout: 30 * 60_000, maxBuffer: 16 * 1024 * 1024, windowsHide: true }
-  )
+      'after_move:filepath'
+  ]
+
+  async function attemptDownload(binaryPath: string, alternativeClient = false): Promise<string> {
+    const clientArguments = alternativeClient
+      ? ['--extractor-args', 'youtube:player-client=default,android_vr']
+      : []
+    const { stdout } = await execFileAsync(
+      binaryPath,
+      [...commonArguments, ...clientArguments, url.href],
+      { timeout: 30 * 60_000, maxBuffer: 16 * 1024 * 1024, windowsHide: true }
+    )
+    return stdout
+  }
+
+  let stdout: string
+  const binaryPath = await getBinary()
+  try {
+    stdout = await attemptDownload(binaryPath)
+  } catch (error) {
+    if (!isForbiddenError(error)) throw error
+
+    let refreshedBinary = binaryPath
+    try {
+      refreshedBinary = await getBinary(true)
+    } catch {
+      // Si GitHub no está accesible, todavía podemos reintentar con el binario existente.
+    }
+    try {
+      stdout = await attemptDownload(refreshedBinary, true)
+    } catch (retryError) {
+      if (isForbiddenError(retryError)) {
+        throw new Error(
+          'YouTube ha rechazado temporalmente este audio (error 403). Inténtalo de nuevo más tarde o prueba otro vídeo.'
+        )
+      }
+      throw retryError
+    }
+  }
 
   const printedPath = stdout
     .trim()
