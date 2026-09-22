@@ -909,7 +909,10 @@ function App(): React.JSX.Element {
               aria-current={view === item.id ? 'page' : undefined}
               onClick={() => setView(item.id)}
             >
-              <span>{item.label}</span>
+              <span className="navigation-label">
+                <b aria-hidden="true">{item.label.charAt(0)}</b>
+                {item.label.slice(1)}
+              </span>
               {item.hint && <span className="navigation-count" aria-label={`${item.hint} pendientes`}>{item.hint}</span>}
             </button>
           ))}
