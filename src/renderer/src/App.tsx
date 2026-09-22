@@ -5,6 +5,7 @@ import type { AudioAnalysis, AudioFormat, DownloadProgress, HistoryEntry, MediaI
 import { evaluateAnalysis } from './analysisEvaluation'
 import { Sidebar, Topbar } from './components/AppChrome'
 import type { AppView } from './components/AppChrome'
+import { DownloadView } from './views/DownloadView'
 
 type AppSettings = {
   directory: string
@@ -977,74 +978,7 @@ function App(): React.JSX.Element {
       <Topbar view={view} />
 
       <section className="hero">
-        {view === 'download' && <>
-        <p className="eyebrow">DESCARGA</p>
-        <h1>Empieza con un enlace.</h1>
-        <p className="intro">Descarga el audio y deja que DISCO prepare su identificación musical.</p>
-
-        <form className="url-form" onSubmit={analyze}>
-          <label htmlFor="source-url">Enlace de YouTube</label>
-          <div className="input-row">
-            <input
-              id="source-url"
-              type="url"
-              inputMode="url"
-              autoComplete="off"
-              placeholder="https://www.youtube.com/watch?v=..."
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              disabled={loading}
-              required
-            />
-            <button type="submit" disabled={!url.trim() || loading}>
-              {loading ? 'Analizando…' : 'Analizar'}
-            </button>
-          </div>
-          {loading && (
-            <p className="status" role="status">
-              La primera ejecución puede tardar mientras DISCO prepara el motor de análisis.
-            </p>
-          )}
-          {error && <p className="error" role="alert">{error}</p>}
-        </form>
-
-        {media && (
-          <article className="media-card download-card">
-            {media.thumbnailUrl && <img src={media.thumbnailUrl} alt="" />}
-            <div className="media-copy">
-              <span className="media-source">YouTube · {formatDuration(media.durationSeconds)}</span>
-              <h2>{media.title}</h2>
-              <p>{media.channel}</p>
-              <div className="export-panel">
-                <fieldset>
-                  <legend>Formato</legend>
-                  <div className="format-options">
-                    {AUDIO_FORMATS.map((audioFormat) => (
-                      <label key={audioFormat} className={format === audioFormat ? 'selected' : ''}>
-                        <input type="radio" name="format" value={audioFormat} checked={format === audioFormat} onChange={() => setFormat(audioFormat)} disabled={downloading} />
-                        {audioFormat.toUpperCase()}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <button className="folder-button" type="button" onClick={selectFolder} disabled={downloading}>{directory ? 'Cambiar carpeta' : 'Elegir carpeta'}</button>
-                {directory && <span className="folder-path" title={directory}>{directory}</span>}
-                <button className="download-button" type="button" onClick={download} disabled={!directory || downloading}>{downloading ? `Preparando ${format.toUpperCase()}…` : error ? `Reintentar en ${format.toUpperCase()}` : `Descargar y analizar en ${format.toUpperCase()}`}</button>
-                {downloading && downloadProgress && (
-                  <div className="download-progress" role="status" aria-live="polite">
-                    <div><span>{downloadProgress.detail}</span><strong>{downloadProgress.percent === null ? '…' : `${Math.round(downloadProgress.percent)}%`}</strong></div>
-                    <progress max="100" value={downloadProgress.percent ?? undefined} />
-                    <button type="button" onClick={() => void cancelDownload()}>Cancelar</button>
-                  </div>
-                )}
-                {analyzing && <p className="analysis-status" role="status">Detectando BPM y tonalidad…</p>}
-              </div>
-            </div>
-          </article>
-        )}
-
-        {!media && <div className="flow-summary" aria-label="Flujo de trabajo"><span><b>1</b> Descarga</span><span><b>2</b> Identifica</span><span><b>3</b> Samplea</span><span><b>4</b> Colección</span></div>}
-        </>}
+        {view === 'download' && <DownloadView url={url} media={media} format={format} directory={directory} loading={loading} downloading={downloading} analyzing={analyzing} error={error} progress={downloadProgress} onUrlChange={setUrl} onFormatChange={setFormat} onAnalyze={analyze} onSelectFolder={() => void selectFolder()} onDownload={() => void download()} onCancel={() => void cancelDownload()} />}
 
         {view === 'identify' && media && downloadedFile && (
           <article className="media-card">

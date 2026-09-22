@@ -384,6 +384,13 @@ footer { padding: 20px 42px; color: #65646a; border-top: 1px solid #242428; font
 .flow-summary span { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 9px 10px; color: #8e8c93; border-top: 1px solid var(--border-strong); font-size: 11px; }
 .flow-summary b { display: grid; width: 22px; height: 22px; place-items: center; color: #ffc5b1; border-radius: 50%; background: var(--accent-soft); font-size: 9px; }
 .download-card { margin-top: 30px; }
+.view-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 390px); gap: 32px; align-items: end; }
+.view-intro h1 { margin-bottom: 0; }
+.view-intro .intro { margin: 0 0 3px; font-size: 14px; line-height: 1.55; }
+.download-view .url-form { margin-top: 34px; }
+.download-view .download-card { margin-top: 24px; }
+.download-destination { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; }
+.download-destination .folder-path { padding-right: 4px; }
 .identification-format { display: none; }
 .review-status > div { display: flex; gap: 6px; }
 
@@ -552,6 +559,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .engine-status { display: none; }
   .app-main .hero { width: min(100% - 32px, 980px); padding-top: 32px; }
   .flow-summary { grid-template-columns: 1fr 1fr; }
+  .view-intro { grid-template-columns: 1fr; gap: 12px; }
+  .download-destination { grid-template-columns: 1fr; }
   .history-entry { grid-template-columns: 70px minmax(0, 1fr); }
   .history-entry > img, .history-placeholder { width: 70px; height: 52px; }
   .organize-overview { grid-template-columns: repeat(2, 1fr); }
