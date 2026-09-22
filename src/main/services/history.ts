@@ -21,7 +21,10 @@ async function readHistory(): Promise<HistoryEntry[]> {
       analysisReview: entry.analysisReview ?? 'pending',
       reviewedAt: entry.reviewedAt ?? null,
       audioFiles: entry.audioFiles ?? [{ format: entry.format, filePath: entry.filePath, createdAt: entry.createdAt }],
-      samples: entry.samples ?? []
+      samples: (entry.samples ?? []).map((sample, index) => ({
+        ...sample,
+        name: sample.name ?? `Sample ${String(index + 1).padStart(2, '0')}`
+      }))
     }))
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
@@ -97,6 +100,24 @@ export async function saveHistorySample(
     }
   })
   await writeHistory(updated)
+}
+
+export async function renameHistorySample(id: string, sampleId: string, name: string): Promise<HistoryEntry[]> {
+  const entries = await readHistory()
+  const updated = entries.map((entry) => entry.id === id
+    ? { ...entry, samples: entry.samples.map((sample) => sample.id === sampleId ? { ...sample, name } : sample) }
+    : entry)
+  await writeHistory(updated)
+  return updated
+}
+
+export async function removeHistorySample(id: string, sampleId: string): Promise<HistoryEntry[]> {
+  const entries = await readHistory()
+  const updated = entries.map((entry) => entry.id === id
+    ? { ...entry, samples: entry.samples.filter((sample) => sample.id !== sampleId) }
+    : entry)
+  await writeHistory(updated)
+  return updated
 }
 
 export async function removeHistoryEntry(id: string): Promise<HistoryEntry[]> {

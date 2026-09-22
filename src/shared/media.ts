@@ -53,6 +53,7 @@ export type HistoryEntry = {
   }>
   samples: Array<{
     id: string
+    name: string
     filePath: string
     format: SampleFormat
     startSeconds: number
@@ -91,10 +92,17 @@ export type SampleFormat = (typeof SAMPLE_FORMATS)[number]
 export type SampleExportRequest = {
   historyId: string
   sampleId?: string
+  sampleName?: string
   startSeconds: number
   endSeconds: number
   format: SampleFormat
   normalizePeak: boolean
+}
+
+export type SampleRenameRequest = {
+  historyId: string
+  sampleId: string
+  name: string
 }
 
 export type SampleExportResult =

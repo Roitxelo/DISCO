@@ -12,6 +12,8 @@ import { generateWaveform } from './services/waveform'
 import { exportSample } from './services/sampleExport'
 import {
   listHistory,
+  removeHistorySample,
+  renameHistorySample,
   saveHistorySample,
   removeHistoryEntry,
   saveHistoryEntry,
@@ -28,7 +30,8 @@ import type {
   HistorySaveRequest,
   WaveformResult,
   SampleExportRequest,
-  SampleExportResult
+  SampleExportResult,
+  SampleRenameRequest
 } from '../shared/media'
 
 protocol.registerSchemesAsPrivileged([
@@ -244,6 +247,52 @@ app.whenReady().then(() => {
     }
   })
 
+  ipcMain.handle('history:sample-rename', async (
+    _event,
+    request: SampleRenameRequest
+  ): Promise<HistoryResult> => {
+    const name = request?.name?.trim()
+    if (!request || typeof request.historyId !== 'string' || typeof request.sampleId !== 'string' || !name) {
+      return { ok: false, error: 'El nombre del sample no es válido.' }
+    }
+    try {
+      return { ok: true, entries: await renameHistorySample(request.historyId, request.sampleId, name.slice(0, 80)) }
+    } catch {
+      return { ok: false, error: 'No se pudo renombrar el sample.' }
+    }
+  })
+
+  ipcMain.handle('history:sample-remove', async (
+    _event,
+    historyId: unknown,
+    sampleId: unknown
+  ): Promise<HistoryResult> => {
+    if (typeof historyId !== 'string' || typeof sampleId !== 'string') {
+      return { ok: false, error: 'El sample no es válido.' }
+    }
+    const entry = (await listHistory()).find((item) => item.id === historyId)
+    const sample = entry?.samples.find((item) => item.id === sampleId)
+    if (!sample) return { ok: false, error: 'El sample ya no está en la colección.' }
+
+    const choice = await dialog.showMessageBox({
+      type: 'warning',
+      title: 'Eliminar sample',
+      message: `¿Qué quieres hacer con “${sample.name}”?`,
+      detail: 'Puedes quitarlo solo de DISCO o eliminar también el archivo exportado.',
+      buttons: ['Cancelar', 'Quitar de DISCO', 'Eliminar también el archivo'],
+      cancelId: 0,
+      defaultId: 0,
+      noLink: true
+    })
+    if (choice.response === 0) return { ok: true, entries: await listHistory() }
+    try {
+      if (choice.response === 2) await rm(sample.filePath, { force: true })
+      return { ok: true, entries: await removeHistorySample(historyId, sampleId) }
+    } catch {
+      return { ok: false, error: 'No se pudo eliminar el sample.' }
+    }
+  })
+
   ipcMain.handle('history:waveform', async (_event, id: unknown): Promise<WaveformResult> => {
     if (typeof id !== 'string') return { ok: false, error: 'La entrada no es válida.' }
     const entry = (await listHistory()).find((item) => item.id === id)
@@ -276,6 +325,10 @@ app.whenReady().then(() => {
     }
 
     const safeTitle = entry.media.title.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '').trim().slice(0, 80) || 'Sample'
+    const requestedName = request.sampleName
+      ?.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '')
+      .trim()
+      .slice(0, 80)
     const musicalInfo = entry.analysis
       ? ` - ${entry.analysis.bpm.toFixed(1)} BPM - ${entry.analysis.key}${entry.analysis.mode === 'minor' ? 'm' : ''}`
       : ''
@@ -287,7 +340,10 @@ app.whenReady().then(() => {
           dirname(existingSample.filePath),
           `${basename(existingSample.filePath, extname(existingSample.filePath))}.${request.format}`
         )
-      : join(dirname(entry.filePath), `${safeTitle}${musicalInfo} - Sample.${request.format}`)
+      : join(
+          dirname(entry.filePath),
+          requestedName ? `${requestedName}.${request.format}` : `${safeTitle}${musicalInfo} - Sample.${request.format}`
+        )
     const selected = await dialog.showSaveDialog({
       title: 'Guardar sample',
       defaultPath,
@@ -329,6 +385,9 @@ app.whenReady().then(() => {
         if (originalMoved) await rm(backupPath, { force: true }).catch(() => undefined)
       }
       await saveHistorySample(request.historyId, {
+        name: request.sampleName?.trim().slice(0, 80)
+          || existingSample?.name
+          || `Sample ${String(entry.samples.length + 1).padStart(2, '0')}`,
         filePath: selected.filePath,
         format: request.format,
         startSeconds: request.startSeconds,

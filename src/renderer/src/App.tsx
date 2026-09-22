@@ -81,6 +81,9 @@ function App(): React.JSX.Element {
   const [samplePreviewId, setSamplePreviewId] = useState('')
   const [samplePreviewUrl, setSamplePreviewUrl] = useState('')
   const [editingSampleId, setEditingSampleId] = useState('')
+  const [pendingSampleName, setPendingSampleName] = useState('')
+  const [renamingSampleId, setRenamingSampleId] = useState('')
+  const [sampleNameDraft, setSampleNameDraft] = useState('')
   const [normalizeSample, setNormalizeSample] = useState(false)
   const [selectedBars, setSelectedBars] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -296,6 +299,8 @@ function App(): React.JSX.Element {
     setExportedSample('')
     setSampleError('')
     setEditingSampleId('')
+    setPendingSampleName('')
+    setRenamingSampleId('')
   }
 
   function prepareAnotherFormat(entry: HistoryEntry): void {
@@ -341,6 +346,7 @@ function App(): React.JSX.Element {
   function editSample(sample: HistoryEntry['samples'][number]): void {
     const duration = sample.endSeconds - sample.startSeconds
     setEditingSampleId(sample.id)
+    setPendingSampleName(sample.name)
     setSelectionStart(sample.startSeconds)
     setSelectionEnd(sample.endSeconds)
     setSampleFormat(sample.format)
@@ -363,8 +369,50 @@ function App(): React.JSX.Element {
     }
   }
 
+  function duplicateSample(sample: HistoryEntry['samples'][number]): void {
+    editSample(sample)
+    setEditingSampleId('')
+    setPendingSampleName(`${sample.name} copia`)
+  }
+
+  function beginSampleRename(sample: HistoryEntry['samples'][number]): void {
+    setRenamingSampleId(sample.id)
+    setSampleNameDraft(sample.name)
+  }
+
+  async function saveSampleName(historyId: string, sampleId: string): Promise<void> {
+    const name = sampleNameDraft.trim()
+    if (!name) return
+    const result = await window.disco.renameSample({ historyId, sampleId, name })
+    if (result.ok) {
+      setHistory(result.entries)
+      if (editingSampleId === sampleId) setPendingSampleName(name)
+      setRenamingSampleId('')
+    } else {
+      setHistoryError(result.error)
+    }
+  }
+
+  async function removeSample(historyId: string, sampleId: string): Promise<void> {
+    const result = await window.disco.removeSample(historyId, sampleId)
+    if (result.ok) {
+      setHistory(result.entries)
+      const stillExists = result.entries.some((entry) => entry.samples.some((sample) => sample.id === sampleId))
+      if (stillExists) return
+      if (samplePreviewId === sampleId) {
+        setSamplePreviewId('')
+        setSamplePreviewUrl('')
+      }
+      if (editingSampleId === sampleId) cancelSampleEditing()
+      if (renamingSampleId === sampleId) setRenamingSampleId('')
+    } else {
+      setHistoryError(result.error)
+    }
+  }
+
   function cancelSampleEditing(): void {
     setEditingSampleId('')
+    setPendingSampleName('')
     setExportedSample('')
     setSampleError('')
   }
@@ -554,6 +602,7 @@ function App(): React.JSX.Element {
     const result = await window.disco.exportSample({
       historyId: playingEntryId,
       sampleId: editingSampleId || undefined,
+      sampleName: pendingSampleName || undefined,
       startSeconds: selectionStart,
       endSeconds: selectionEnd,
       format: sampleFormat,
@@ -565,6 +614,7 @@ function App(): React.JSX.Element {
         const refreshed = await window.disco.listHistory()
         if (refreshed.ok) setHistory(refreshed.entries)
         setEditingSampleId('')
+        setPendingSampleName('')
       }
     } else {
       setSampleError(result.error)
@@ -941,16 +991,30 @@ function App(): React.JSX.Element {
                     <details className="associated-samples" open={view === 'sample'}>
                       <summary>{entry.samples.length} {entry.samples.length === 1 ? 'sample asociado' : 'samples asociados'}</summary>
                       <div className="sample-list">
-                        {entry.samples.map((sample, index) => (
+                        {entry.samples.map((sample) => (
                           <article className={`sample-row ${editingSampleId === sample.id ? 'editing' : ''}`} key={sample.id}>
                             <div>
-                              <strong>Sample {String(index + 1).padStart(2, '0')}</strong>
+                              {renamingSampleId === sample.id ? (
+                                <form className="sample-rename" onSubmit={(event) => { event.preventDefault(); void saveSampleName(entry.id, sample.id) }}>
+                                  <input value={sampleNameDraft} maxLength={80} aria-label="Nombre del sample" autoFocus onChange={(event) => setSampleNameDraft(event.target.value)} />
+                                  <button type="submit" disabled={!sampleNameDraft.trim()}>Guardar</button>
+                                  <button type="button" onClick={() => setRenamingSampleId('')}>Cancelar</button>
+                                </form>
+                              ) : <strong>{sample.name}</strong>}
                               <span>{formatTimestamp(sample.startSeconds)}–{formatTimestamp(sample.endSeconds)} · {sample.format.toUpperCase()}{sample.normalizePeak ? ' · normalizado' : ''}</span>
                             </div>
                             <div className="sample-row-actions">
-                              {view === 'sample' && <button type="button" onClick={() => editSample(sample)} disabled={editingSampleId === sample.id}>Editar</button>}
                               <button type="button" onClick={() => void toggleSamplePreview(entry.id, sample.id)}>{samplePreviewId === sample.id ? 'Cerrar' : 'Escuchar'}</button>
-                              <button type="button" onClick={() => window.disco.revealFile(sample.filePath)}>Localizar</button>
+                              <details className="sample-menu">
+                                <summary aria-label={`Más acciones para ${sample.name}`}>···</summary>
+                                <div>
+                                  {view === 'sample' && <button type="button" onClick={() => editSample(sample)} disabled={editingSampleId === sample.id}>Editar</button>}
+                                  {view === 'sample' && <button type="button" onClick={() => duplicateSample(sample)}>Duplicar</button>}
+                                  <button type="button" onClick={() => beginSampleRename(sample)}>Renombrar</button>
+                                  <button type="button" onClick={() => window.disco.revealFile(sample.filePath)}>Localizar</button>
+                                  <button className="destructive" type="button" onClick={() => void removeSample(entry.id, sample.id)}>Eliminar</button>
+                                </div>
+                              </details>
                             </div>
                             {samplePreviewId === sample.id && samplePreviewUrl && <audio src={samplePreviewUrl} controls autoPlay preload="metadata">Tu sistema no permite reproducir este formato.</audio>}
                           </article>
@@ -1060,7 +1124,7 @@ function App(): React.JSX.Element {
                               </label>
                               <span className="selection-duration">{formatTimestamp(selectionEnd - selectionStart)}</span>
                             </div>
-                            {editingSampleId && <div className="sample-editing" role="status"><span>Editando Sample {String(entry.samples.findIndex((sample) => sample.id === editingSampleId) + 1).padStart(2, '0')}</span><button type="button" onClick={cancelSampleEditing}>Cancelar</button></div>}
+                            {(editingSampleId || pendingSampleName) && <div className="sample-editing" role="status"><span>{editingSampleId ? `Editando ${pendingSampleName}` : `Nueva copia · ${pendingSampleName}`}</span><button type="button" onClick={cancelSampleEditing}>Cancelar</button></div>}
                             <div className="sample-export">
                               <label>
                                 Formato
@@ -1073,7 +1137,7 @@ function App(): React.JSX.Element {
                                 Normalizar a −1 dB
                               </label>
                               <button type="button" onClick={saveSample} disabled={exportingSample || selectionEnd - selectionStart < 0.05}>
-                                {exportingSample ? 'Exportando…' : editingSampleId ? 'Actualizar sample' : 'Exportar sample'}
+                                {exportingSample ? 'Exportando…' : editingSampleId ? 'Actualizar sample' : pendingSampleName ? 'Guardar copia' : 'Exportar sample'}
                               </button>
                               {exportedSample && <button className="export-success" type="button" onClick={() => window.disco.revealFile(exportedSample)}>Mostrar sample</button>}
                             </div>

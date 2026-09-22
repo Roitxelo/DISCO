@@ -10,7 +10,8 @@ import type {
   HistorySaveRequest,
   WaveformResult,
   SampleExportRequest,
-  SampleExportResult
+  SampleExportResult,
+  SampleRenameRequest
 } from '../shared/media'
 
 contextBridge.exposeInMainWorld('disco', {
@@ -32,6 +33,10 @@ contextBridge.exposeInMainWorld('disco', {
     ipcRenderer.invoke('history:audio-source', id),
   getSampleSource: (historyId: string, sampleId: string): Promise<AudioSourceResult> =>
     ipcRenderer.invoke('history:sample-source', historyId, sampleId),
+  renameSample: (request: SampleRenameRequest): Promise<HistoryResult> =>
+    ipcRenderer.invoke('history:sample-rename', request),
+  removeSample: (historyId: string, sampleId: string): Promise<HistoryResult> =>
+    ipcRenderer.invoke('history:sample-remove', historyId, sampleId),
   getWaveform: (id: string): Promise<WaveformResult> => ipcRenderer.invoke('history:waveform', id),
   exportSample: (request: SampleExportRequest): Promise<SampleExportResult> =>
     ipcRenderer.invoke('sample:export', request),
