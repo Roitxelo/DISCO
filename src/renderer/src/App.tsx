@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { AUDIO_FORMATS, SAMPLE_FORMATS } from '../../shared/media'
 import type { AudioAnalysis, AudioFormat, HistoryEntry, MediaInfo, SampleFormat } from '../../shared/media'
+import { evaluateAnalysis } from './analysisEvaluation'
 
 const MUSICAL_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
 const CAMELOT_MAJOR = ['8B', '3B', '10B', '5B', '12B', '7B', '2B', '9B', '4B', '11B', '6B', '1B']
@@ -71,6 +72,7 @@ function App(): React.JSX.Element {
   const [exportedSample, setExportedSample] = useState('')
   const [sampleError, setSampleError] = useState('')
   const audioRef = useRef<HTMLAudioElement>(null)
+  const evaluation = useMemo(() => evaluateAnalysis(history), [history])
 
   useEffect(() => {
     void window.disco.listHistory().then((result) => {
@@ -466,6 +468,29 @@ function App(): React.JSX.Element {
             </div>
             <span>{history.length} {history.length === 1 ? 'descarga' : 'descargas'}</span>
           </div>
+          <details className="evaluation-panel">
+            <summary>
+              <span>Calidad del análisis</span>
+              <span>{evaluation.reviewed} revisados · {evaluation.pending} pendientes</span>
+            </summary>
+            {evaluation.reviewed === 0 ? (
+              <p>Confirma o corrige resultados para empezar a medir la precisión.</p>
+            ) : (
+              <div className="evaluation-content">
+                <div className="evaluation-metrics">
+                  <article><span>BPM ±1</span><strong>{evaluation.bpmAccuracy}%</strong></article>
+                  <article><span>Tónica</span><strong>{evaluation.tonicAccuracy}%</strong></article>
+                  <article><span>Mayor / menor</span><strong>{evaluation.modeAccuracy}%</strong></article>
+                  <article><span>Tonalidad completa</span><strong>{evaluation.fullKeyAccuracy}%</strong></article>
+                </div>
+                <p>
+                  {evaluation.confirmed} aciertos confirmados · {evaluation.corrected} correcciones
+                  {evaluation.halfDoubleErrors > 0 && ` · ${evaluation.halfDoubleErrors} errores de mitad/doble tempo`}
+                </p>
+                {evaluation.reviewed < 10 && <small>La muestra todavía es pequeña; necesitaremos al menos 10–20 revisiones para extraer conclusiones.</small>}
+              </div>
+            )}
+          </details>
           {historyError && <p className="error" role="alert">{historyError}</p>}
           {history.length === 0 ? (
             <p className="empty-library">Tus próximas descargas aparecerán aquí automáticamente.</p>

@@ -32,10 +32,10 @@ consulta de metadatos, descarga, conversión, análisis musical, revisión de re
 - [x] Convertir la tonalidad a Camelot.
 - [x] Confirmar resultados correctos.
 - [x] Corregir resultados conservando el análisis automático original.
-- [ ] Crear un banco local de pruebas con los resultados revisados.
+- [x] Crear un banco local de pruebas con los resultados revisados.
 - [ ] Mostrar alternativas probables cuando la confianza sea baja.
 - [ ] Recalibrar BPM, tónica y modo con el banco de pruebas.
-- [ ] Medir precisión por separado para BPM, tónica y mayor/menor.
+- [x] Medir precisión por separado para BPM, tónica y mayor/menor.
 
 ## Fase 3 — Biblioteca local
 

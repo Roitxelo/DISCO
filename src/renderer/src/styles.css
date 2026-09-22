@@ -108,6 +108,21 @@ button:disabled { color: #77747a; background: #29282d; cursor: not-allowed; }
 .library-heading .eyebrow { margin: 0 0 8px; }
 .library-heading h2 { margin: 0; font-size: 30px; letter-spacing: -.035em; }
 .library-heading > span { color: #77777e; font-size: 12px; }
+.evaluation-panel { margin-top: 18px; overflow: hidden; border: 1px solid #2d2c31; border-radius: 12px; background: #111114; }
+.evaluation-panel summary { display: flex; justify-content: space-between; gap: 15px; padding: 14px 16px; color: #d6d3d7; cursor: pointer; font-size: 12px; font-weight: 700; list-style: none; }
+.evaluation-panel summary::-webkit-details-marker { display: none; }
+.evaluation-panel summary::before { content: '▸'; color: #ff7046; }
+.evaluation-panel[open] summary::before { content: '▾'; }
+.evaluation-panel summary span:first-of-type { margin-right: auto; }
+.evaluation-panel summary span:last-child { color: #77777e; font-size: 10px; font-weight: 500; }
+.evaluation-panel > p, .evaluation-content { margin: 0; padding: 14px 16px; color: #85838a; border-top: 1px solid #29282d; font-size: 11px; }
+.evaluation-content { display: grid; gap: 11px; }
+.evaluation-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.evaluation-metrics article { display: grid; gap: 5px; padding: 11px; border-radius: 8px; background: #0d0d10; }
+.evaluation-metrics span { color: #77777e; font-size: 9px; text-transform: uppercase; }
+.evaluation-metrics strong { color: #f2eee8; font-size: 20px; }
+.evaluation-content p { margin: 0; color: #aaa8ae; }
+.evaluation-content small { color: #ff9a78; }
 .empty-library { margin: 18px 0 0; padding: 25px; color: #77777e; border: 1px dashed #343339; border-radius: 12px; text-align: center; }
 .history-list { display: grid; gap: 9px; margin-top: 18px; }
 .history-entry { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 10px; border: 1px solid #2d2c31; border-radius: 12px; background: #111114; }
@@ -163,5 +178,6 @@ footer { padding: 20px 42px; color: #65646a; border-top: 1px solid #242428; font
   .history-entry > img, .history-placeholder { width: 80px; height: 54px; }
   .history-actions { grid-column: 1 / -1; }
   .history-actions button { flex: 1; }
+  .evaluation-metrics { grid-template-columns: 1fr 1fr; }
   footer { padding: 18px 22px; }
 }
