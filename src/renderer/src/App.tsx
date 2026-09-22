@@ -3,8 +3,9 @@ import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as Re
 import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../../shared/media'
 import type { AudioAnalysis, AudioFormat, DownloadProgress, HistoryEntry, MediaInfo, ProjectStatus, SampleFormat } from '../../shared/media'
 import { evaluateAnalysis } from './analysisEvaluation'
+import { Sidebar, Topbar } from './components/AppChrome'
+import type { AppView } from './components/AppChrome'
 
-type AppView = 'download' | 'identify' | 'sample' | 'collection' | 'organize' | 'settings'
 type AppSettings = {
   directory: string
   downloadFormat: AudioFormat
@@ -930,14 +931,6 @@ function App(): React.JSX.Element {
     setSavingCorrection(false)
   }
 
-  const navigation: Array<{ id: AppView; label: string; hint?: string }> = [
-    { id: 'download', label: 'Descarga' },
-    { id: 'identify', label: 'Identifica', hint: pendingEntries.length ? String(pendingEntries.length) : undefined },
-    { id: 'sample', label: 'Samplea' },
-    { id: 'collection', label: 'Colección' },
-    { id: 'organize', label: 'Organiza' }
-  ]
-
   const visibleEntries = view === 'identify'
     ? pendingEntries
     : view === 'collection' || view === 'sample'
@@ -963,58 +956,25 @@ function App(): React.JSX.Element {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand sidebar-brand">
-          <span className="brand-mark" aria-hidden="true" />
-          <span>DISCO</span>
-        </div>
-        <nav className="main-navigation" aria-label="Navegación principal">
-          {navigation.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              className={view === item.id ? 'active' : ''}
-              aria-label={item.hint ? `${item.label}, ${item.hint} pendientes` : item.label}
-              aria-current={view === item.id ? 'page' : undefined}
-              onClick={() => setView(item.id)}
-            >
-              <span className="navigation-label">
-                <b aria-hidden="true">{item.label.charAt(0)}</b>
-                {item.label.slice(1)}
-              </span>
-              {item.hint && <span className="navigation-count" aria-label={`${item.hint} pendientes`}>{item.hint}</span>}
-            </button>
-          ))}
-        </nav>
-        <section className="current-work" aria-labelledby="current-work-title">
-          <span className="sidebar-label" id="current-work-title">Trabajo actual</span>
-          <strong title={currentStep.label}>{currentStep.label}</strong>
-          <small>{currentStep.detail}</small>
-          <div className="current-work-actions">
-            <button type="button" onClick={() => {
-              if (currentEntry && currentStep.target === 'identify') openIdentification(currentEntry)
-              else if (currentEntry && currentStep.target === 'sample') void openSampler(currentEntry)
-              else setView(currentStep.target)
-            }}>
-              {!currentEntry ? 'Nueva descarga' : currentEntry.analysisReview === 'pending' ? 'Continuar' : 'Samplear'}
-            </button>
-            {currentEntry && currentEntry.analysisReview !== 'pending' && <button className="finish-work" type="button" onClick={finishCurrentWork}>Finalizar trabajo</button>}
-          </div>
-        </section>
-        <button className={`sidebar-settings ${view === 'settings' ? 'active' : ''}`} type="button" aria-current={view === 'settings' ? 'page' : undefined} onClick={() => setView('settings')}>
-          <span aria-hidden="true">⚙</span> Ajustes
-        </button>
-        <div className="sidebar-footer"><span>Motor listo</span><span>v{window.disco.version}</span></div>
-      </aside>
+      <Sidebar
+        view={view}
+        pendingCount={pendingEntries.length}
+        currentLabel={currentStep.label}
+        currentDetail={currentStep.detail}
+        currentActionLabel={!currentEntry ? 'Nueva descarga' : currentEntry.analysisReview === 'pending' ? 'Continuar' : 'Samplear'}
+        canFinishCurrentWork={Boolean(currentEntry && currentEntry.analysisReview !== 'pending')}
+        version={window.disco.version}
+        onNavigate={setView}
+        onContinueCurrentWork={() => {
+          if (currentEntry && currentStep.target === 'identify') openIdentification(currentEntry)
+          else if (currentEntry && currentStep.target === 'sample') void openSampler(currentEntry)
+          else setView(currentStep.target)
+        }}
+        onFinishCurrentWork={finishCurrentWork}
+      />
 
       <main className="app-main">
-      <header className="topbar">
-        <div>
-          <span className="eyebrow">{view === 'settings' ? 'Ajustes' : navigation.find((item) => item.id === view)?.label}</span>
-          <strong>{view === 'download' ? 'Del enlace al estudio.' : view === 'identify' ? 'Revisa antes de guardar.' : view === 'sample' ? 'Encuentra el fragmento.' : view === 'collection' ? 'Tu música, siempre editable.' : view === 'organize' ? 'Pon orden a tus proyectos.' : 'Configura tu forma de trabajar.'}</strong>
-        </div>
-        <span className="engine-status"><span aria-hidden="true" /> Motor listo</span>
-      </header>
+      <Topbar view={view} />
 
       <section className="hero">
         {view === 'download' && <>
