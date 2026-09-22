@@ -14,7 +14,10 @@ import type {
   SampleExportResult,
   SampleRenameRequest,
   HistoryAudioFileRequest,
-  HistoryOrganizationUpdate
+  HistoryOrganizationUpdate,
+  HistoryAvailabilityResult,
+  HistoryRelinkRequest,
+  DownloadProgress
 } from '../shared/media'
 
 declare global {
@@ -25,9 +28,13 @@ declare global {
       analyzeUrl: (url: string) => Promise<AnalyzeResult>
       selectFolder: () => Promise<string | null>
       downloadAudio: (request: DownloadRequest) => Promise<DownloadResult>
+      cancelDownload: () => Promise<boolean>
+      onDownloadProgress: (callback: (progress: DownloadProgress) => void) => () => void
       revealFile: (filePath: string) => Promise<void>
       analyzeAudio: (filePath: string) => Promise<AudioAnalysisResult>
       listHistory: () => Promise<HistoryResult>
+      checkHistoryAvailability: () => Promise<HistoryAvailabilityResult>
+      relinkHistoryFile: (request: HistoryRelinkRequest) => Promise<HistoryResult>
       saveHistory: (request: HistorySaveRequest) => Promise<HistoryResult>
       updateHistoryAnalysis: (request: HistoryAnalysisUpdate) => Promise<HistoryResult>
       getAudioSource: (request: HistoryAudioFileRequest) => Promise<AudioSourceResult>

@@ -13,7 +13,10 @@ import type {
   SampleExportResult,
   SampleRenameRequest,
   HistoryAudioFileRequest,
-  HistoryOrganizationUpdate
+  HistoryOrganizationUpdate,
+  HistoryAvailabilityResult,
+  HistoryRelinkRequest,
+  DownloadProgress
 } from '../shared/media'
 
 contextBridge.exposeInMainWorld('disco', {
@@ -23,10 +26,18 @@ contextBridge.exposeInMainWorld('disco', {
   selectFolder: (): Promise<string | null> => ipcRenderer.invoke('folder:select'),
   downloadAudio: (request: DownloadRequest): Promise<DownloadResult> =>
     ipcRenderer.invoke('media:download', request),
+  cancelDownload: (): Promise<boolean> => ipcRenderer.invoke('media:download-cancel'),
+  onDownloadProgress: (callback: (progress: DownloadProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: DownloadProgress): void => callback(progress)
+    ipcRenderer.on('download:progress', listener)
+    return () => ipcRenderer.removeListener('download:progress', listener)
+  },
   revealFile: (filePath: string): Promise<void> => ipcRenderer.invoke('file:reveal', filePath),
   analyzeAudio: (filePath: string): Promise<AudioAnalysisResult> =>
     ipcRenderer.invoke('audio:analyze', filePath),
   listHistory: (): Promise<HistoryResult> => ipcRenderer.invoke('history:list'),
+  checkHistoryAvailability: (): Promise<HistoryAvailabilityResult> => ipcRenderer.invoke('history:availability'),
+  relinkHistoryFile: (request: HistoryRelinkRequest): Promise<HistoryResult> => ipcRenderer.invoke('history:relink', request),
   saveHistory: (request: HistorySaveRequest): Promise<HistoryResult> =>
     ipcRenderer.invoke('history:save', request),
   updateHistoryAnalysis: (request: HistoryAnalysisUpdate): Promise<HistoryResult> =>

@@ -12,6 +12,8 @@ import { generateWaveform } from './services/waveform'
 import { exportSample } from './services/sampleExport'
 import {
   listHistory,
+  relinkHistoryAudioFile,
+  relinkHistorySample,
   removeHistoryAudioFile,
   removeHistorySample,
   renameHistorySample,
@@ -36,7 +38,10 @@ import type {
   SampleExportResult,
   SampleRenameRequest,
   HistoryAudioFileRequest,
-  HistoryOrganizationUpdate
+  HistoryOrganizationUpdate,
+  HistoryAvailabilityResult,
+  HistoryRelinkRequest,
+  DownloadProgress
 } from '../shared/media'
 
 protocol.registerSchemesAsPrivileged([
@@ -49,6 +54,8 @@ const AUDIO_MIME_TYPES: Record<string, string> = {
   '.flac': 'audio/flac',
   '.m4a': 'audio/mp4'
 }
+
+const activeDownloads = new Map<number, AbortController>()
 
 async function streamAudio(request: Request, filePath: string): Promise<Response> {
   const file = await stat(filePath)
@@ -158,14 +165,37 @@ app.whenReady().then(() => {
     return result.canceled ? null : result.filePaths[0] ?? null
   })
 
-  ipcMain.handle('media:download', async (_event, request: DownloadRequest): Promise<DownloadResult> => {
+  ipcMain.handle('media:download', async (event, request: DownloadRequest): Promise<DownloadResult> => {
+    if (activeDownloads.has(event.sender.id)) return { ok: false, error: 'Ya hay una descarga en curso.' }
+    const controller = new AbortController()
+    const cancelWhenClosed = (): void => controller.abort()
+    activeDownloads.set(event.sender.id, controller)
+    event.sender.once('destroyed', cancelWhenClosed)
     try {
-      const filePath = await downloadAudio(request.url, request.directory, request.format)
+      const filePath = await downloadAudio(
+        request.url,
+        request.directory,
+        request.format,
+        (progress: DownloadProgress) => {
+          if (!event.sender.isDestroyed()) event.sender.send('download:progress', progress)
+        },
+        controller.signal
+      )
       return { ok: true, filePath }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo descargar el audio.'
       return { ok: false, error: message }
+    } finally {
+      if (!event.sender.isDestroyed()) event.sender.removeListener('destroyed', cancelWhenClosed)
+      activeDownloads.delete(event.sender.id)
     }
+  })
+
+  ipcMain.handle('media:download-cancel', (event): boolean => {
+    const controller = activeDownloads.get(event.sender.id)
+    if (!controller) return false
+    controller.abort()
+    return true
   })
 
   ipcMain.handle('file:reveal', (_event, filePath: unknown): void => {
@@ -187,6 +217,55 @@ app.whenReady().then(() => {
       return { ok: true, entries: await listHistory() }
     } catch {
       return { ok: false, error: 'No se pudo cargar el historial.' }
+    }
+  })
+
+  ipcMain.handle('history:availability', async (): Promise<HistoryAvailabilityResult> => {
+    try {
+      const entries = await listHistory()
+      const audioFiles: Record<string, boolean> = {}
+      const samples: Record<string, boolean> = {}
+      await Promise.all(entries.flatMap((entry) => [
+        ...entry.audioFiles.map(async (file) => {
+          audioFiles[`${entry.id}:${file.format}`] = (await stat(file.filePath).catch(() => null))?.isFile() === true
+        }),
+        ...entry.samples.map(async (sample) => {
+          samples[`${entry.id}:${sample.id}`] = (await stat(sample.filePath).catch(() => null))?.isFile() === true
+        })
+      ]))
+      return { ok: true, audioFiles, samples }
+    } catch {
+      return { ok: false, error: 'No se pudo comprobar el estado de los archivos.' }
+    }
+  })
+
+  ipcMain.handle('history:relink', async (_event, request: HistoryRelinkRequest): Promise<HistoryResult> => {
+    if (!request || typeof request.historyId !== 'string') return { ok: false, error: 'La referencia no es válida.' }
+    const entry = (await listHistory()).find((item) => item.id === request.historyId)
+    if (!entry) return { ok: false, error: 'La canción ya no está en la colección.' }
+    const audioFile = request.format ? entry.audioFiles.find((file) => file.format === request.format) : null
+    const sample = request.sampleId ? entry.samples.find((item) => item.id === request.sampleId) : null
+    if (!audioFile && !sample) return { ok: false, error: 'El archivo ya no está registrado en DISCO.' }
+    const expectedFormat = audioFile?.format ?? sample!.format
+    const selected = await dialog.showOpenDialog({
+      title: audioFile ? `Localizar archivo ${expectedFormat.toUpperCase()}` : `Localizar ${sample!.name}`,
+      properties: ['openFile'],
+      filters: [{ name: expectedFormat.toUpperCase(), extensions: [expectedFormat] }]
+    })
+    if (selected.canceled || !selected.filePaths[0]) return { ok: true, entries: await listHistory() }
+    const filePath = selected.filePaths[0]
+    if (extname(filePath).toLowerCase() !== `.${expectedFormat}`) {
+      return { ok: false, error: `Selecciona un archivo ${expectedFormat.toUpperCase()}.` }
+    }
+    try {
+      const info = await stat(filePath)
+      if (!info.isFile()) return { ok: false, error: 'La ruta seleccionada no es un archivo.' }
+      const entries = audioFile
+        ? await relinkHistoryAudioFile(entry.id, audioFile.format, filePath)
+        : await relinkHistorySample(entry.id, sample!.id, filePath)
+      return { ok: true, entries }
+    } catch {
+      return { ok: false, error: 'No se pudo volver a enlazar el archivo.' }
     }
   })
 

@@ -26,6 +26,12 @@ export type DownloadResult =
   | { ok: true; filePath: string }
   | { ok: false; error: string }
 
+export type DownloadProgress = {
+  phase: 'downloading' | 'converting' | 'finalizing'
+  percent: number | null
+  detail: string
+}
+
 export type AudioAnalysis = {
   bpm: number
   key: string
@@ -120,6 +126,20 @@ export type HistoryOrganizationUpdate = {
   favorite?: boolean
   tags?: string[]
   projectStatus?: ProjectStatus
+}
+
+export type HistoryAvailabilityResult =
+  | {
+      ok: true
+      audioFiles: Record<string, boolean>
+      samples: Record<string, boolean>
+    }
+  | { ok: false; error: string }
+
+export type HistoryRelinkRequest = {
+  historyId: string
+  format?: AudioFormat
+  sampleId?: string
 }
 
 export type SampleExportResult =

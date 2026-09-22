@@ -5,12 +5,12 @@ import { arch, platform } from 'node:os'
 import { extname, isAbsolute, join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 import { app } from 'electron'
 import ffmpegPath from 'ffmpeg-static'
 import { AUDIO_FORMATS } from '../../shared/media'
-import type { AudioFormat, MediaInfo } from '../../shared/media'
+import type { AudioFormat, DownloadProgress, MediaInfo } from '../../shared/media'
 
 const execFileAsync = promisify(execFile)
 const RELEASE_URL = 'https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest'
@@ -181,7 +181,9 @@ export async function getMediaInfo(rawUrl: string): Promise<MediaInfo> {
 export async function downloadAudio(
   rawUrl: string,
   directory: string,
-  format: AudioFormat
+  format: AudioFormat,
+  onProgress?: (progress: DownloadProgress) => void,
+  signal?: AbortSignal
 ): Promise<string> {
   const url = validateYoutubeUrl(rawUrl)
   if (!AUDIO_FORMATS.includes(format)) throw new Error('El formato seleccionado no es válido.')
@@ -216,12 +218,79 @@ export async function downloadAudio(
     const clientArguments = alternativeClient
       ? ['--extractor-args', 'youtube:player-client=default,android_vr']
       : []
-    const { stdout } = await execFileAsync(
-      binaryPath,
-      [...commonArguments, ...clientArguments, url.href],
-      { timeout: 30 * 60_000, maxBuffer: 16 * 1024 * 1024, windowsHide: true }
-    )
-    return stdout
+    return new Promise((resolveDownload, rejectDownload) => {
+      if (signal?.aborted) {
+        rejectDownload(new Error('Descarga cancelada.'))
+        return
+      }
+      const child = spawn(binaryPath, [...commonArguments, ...clientArguments, url.href], {
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe']
+      })
+      let stdout = ''
+      let stderr = ''
+      let lineBuffer = ''
+      let settled = false
+      let timedOut = false
+      const stopChild = (): void => {
+        if (process.platform === 'win32' && child.pid) {
+          spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' })
+        } else child.kill()
+      }
+      const timeout = setTimeout(() => {
+        timedOut = true
+        stopChild()
+      }, 30 * 60_000)
+
+      const reportOutput = (chunk: Buffer): void => {
+        lineBuffer += chunk.toString()
+        const lines = lineBuffer.split(/\r?\n|\r/)
+        lineBuffer = lines.pop() ?? ''
+        for (const line of lines) {
+          const progress = /\[download\]\s+([\d.]+)%/.exec(line)
+          if (progress) {
+            onProgress?.({ phase: 'downloading', percent: Math.min(100, Number(progress[1])), detail: 'Descargando audio' })
+          } else if (/\[(ExtractAudio|Merger|ffmpeg)\]/i.test(line)) {
+            onProgress?.({ phase: 'converting', percent: null, detail: `Convirtiendo a ${format.toUpperCase()}` })
+          }
+        }
+      }
+      child.stdout.on('data', (chunk: Buffer) => {
+        stdout += chunk.toString()
+        reportOutput(chunk)
+      })
+      child.stderr.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString()
+        reportOutput(chunk)
+      })
+      const abort = (): void => { stopChild() }
+      signal?.addEventListener('abort', abort, { once: true })
+      child.on('error', (error) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        signal?.removeEventListener('abort', abort)
+        rejectDownload(error)
+      })
+      child.on('close', (code) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        signal?.removeEventListener('abort', abort)
+        if (signal?.aborted) {
+          rejectDownload(new Error('Descarga cancelada.'))
+        } else if (timedOut) {
+          rejectDownload(new Error('La descarga ha superado el tiempo máximo de espera. Puedes volver a intentarlo.'))
+        } else if (code === 0) {
+          onProgress?.({ phase: 'finalizing', percent: 100, detail: 'Preparando el análisis' })
+          resolveDownload(stdout)
+        } else {
+          const error = new Error(stderr.trim() || `yt-dlp terminó con el código ${code ?? 'desconocido'}.`) as Error & { stderr?: string }
+          error.stderr = stderr
+          rejectDownload(error)
+        }
+      })
+    })
   }
 
   let stdout: string

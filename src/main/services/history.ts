@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { app } from 'electron'
 import { PROJECT_STATUSES } from '../../shared/media'
@@ -11,12 +11,16 @@ function historyPath(): string {
   return join(app.getPath('userData'), 'history.json')
 }
 
-async function readHistory(): Promise<HistoryEntry[]> {
-  try {
-    const contents = await readFile(historyPath(), 'utf8')
-    const parsed: unknown = JSON.parse(contents)
-    if (!Array.isArray(parsed)) return []
-    return (parsed as HistoryEntry[]).map((entry) => ({
+function backupHistoryPath(): string {
+  return `${historyPath()}.backup`
+}
+
+function normalizeHistory(contents: string): HistoryEntry[] {
+  const parsed: unknown = JSON.parse(contents)
+  if (!Array.isArray(parsed)) throw new Error('El historial no contiene una lista válida.')
+  return (parsed as HistoryEntry[])
+    .filter((entry) => entry && typeof entry.id === 'string' && entry.media && typeof entry.media.id === 'string')
+    .map((entry) => ({
       ...entry,
       detectedAnalysis: entry.detectedAnalysis ?? entry.analysis,
       analysisReview: entry.analysisReview ?? 'pending',
@@ -30,9 +34,20 @@ async function readHistory(): Promise<HistoryEntry[]> {
       tags: entry.tags ?? [],
       projectStatus: entry.projectStatus ?? ((entry.samples?.length ?? 0) > 0 ? 'sampled' : 'new')
     }))
+}
+
+async function readHistory(): Promise<HistoryEntry[]> {
+  try {
+    return normalizeHistory(await readFile(historyPath(), 'utf8'))
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
-    throw error
+    try {
+      const recovered = normalizeHistory(await readFile(backupHistoryPath(), 'utf8'))
+      await writeFile(historyPath(), JSON.stringify(recovered, null, 2), 'utf8')
+      return recovered
+    } catch {
+      throw error
+    }
   }
 }
 
@@ -41,7 +56,35 @@ async function writeHistory(entries: HistoryEntry[]): Promise<void> {
   const temporary = `${destination}.tmp`
   await mkdir(dirname(destination), { recursive: true })
   await writeFile(temporary, JSON.stringify(entries, null, 2), 'utf8')
+  try {
+    normalizeHistory(await readFile(destination, 'utf8'))
+    await copyFile(destination, backupHistoryPath())
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      // Un historial previo inválido no debe reemplazar una copia de seguridad válida.
+    }
+  }
   await rename(temporary, destination)
+}
+
+export async function relinkHistoryAudioFile(id: string, format: AudioFormat, filePath: string): Promise<HistoryEntry[]> {
+  const entries = await readHistory()
+  const updated = entries.map((entry) => {
+    if (entry.id !== id) return entry
+    const audioFiles = entry.audioFiles.map((file) => file.format === format ? { ...file, filePath } : file)
+    return entry.format === format ? { ...entry, audioFiles, filePath } : { ...entry, audioFiles }
+  })
+  await writeHistory(updated)
+  return updated
+}
+
+export async function relinkHistorySample(id: string, sampleId: string, filePath: string): Promise<HistoryEntry[]> {
+  const entries = await readHistory()
+  const updated = entries.map((entry) => entry.id === id
+    ? { ...entry, samples: entry.samples.map((sample) => sample.id === sampleId ? { ...sample, filePath } : sample) }
+    : entry)
+  await writeHistory(updated)
+  return updated
 }
 
 export async function listHistory(): Promise<HistoryEntry[]> {

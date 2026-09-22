@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react'
 import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../../shared/media'
-import type { AudioAnalysis, AudioFormat, HistoryEntry, MediaInfo, ProjectStatus, SampleFormat } from '../../shared/media'
+import type { AudioAnalysis, AudioFormat, DownloadProgress, HistoryEntry, MediaInfo, ProjectStatus, SampleFormat } from '../../shared/media'
 import { evaluateAnalysis } from './analysisEvaluation'
 
 type AppView = 'download' | 'identify' | 'sample' | 'collection' | 'organize'
@@ -55,6 +55,7 @@ function App(): React.JSX.Element {
   const [format, setFormat] = useState<AudioFormat>('wav')
   const [directory, setDirectory] = useState('')
   const [downloading, setDownloading] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null)
   const [downloadedFile, setDownloadedFile] = useState('')
   const [analysis, setAnalysis] = useState<AudioAnalysis | null>(null)
   const [displayBpm, setDisplayBpm] = useState(0)
@@ -99,6 +100,8 @@ function App(): React.JSX.Element {
   const [organizeStatus, setOrganizeStatus] = useState<ProjectStatus | 'all'>('all')
   const [organizeTag, setOrganizeTag] = useState('all')
   const [tagDrafts, setTagDrafts] = useState<Record<string, string>>({})
+  const [availableAudioFiles, setAvailableAudioFiles] = useState<Record<string, boolean>>({})
+  const [availableSamples, setAvailableSamples] = useState<Record<string, boolean>>({})
   const audioRef = useRef<HTMLAudioElement>(null)
   const waveformRef = useRef<HTMLDivElement>(null)
   const dragModeRef = useRef<'selection' | 'start' | 'end' | null>(null)
@@ -142,7 +145,24 @@ function App(): React.JSX.Element {
       if (result.ok) setHistory(result.entries)
       else setHistoryError(result.error)
     })
+    void refreshAvailability()
   }, [])
+
+  useEffect(() => window.disco.onDownloadProgress(setDownloadProgress), [])
+
+  useEffect(() => {
+    const checkFiles = (): void => { void refreshAvailability() }
+    window.addEventListener('focus', checkFiles)
+    return () => window.removeEventListener('focus', checkFiles)
+  }, [])
+
+  async function refreshAvailability(): Promise<void> {
+    const result = await window.disco.checkHistoryAvailability()
+    if (result.ok) {
+      setAvailableAudioFiles(result.audioFiles)
+      setAvailableSamples(result.samples)
+    }
+  }
 
   useEffect(() => {
     function handlePlaybackShortcut(event: KeyboardEvent): void {
@@ -159,7 +179,10 @@ function App(): React.JSX.Element {
   async function saveToHistory(filePath: string, audioAnalysis: AudioAnalysis | null): Promise<void> {
     if (!media) return
     const result = await window.disco.saveHistory({ media, format, filePath, analysis: audioAnalysis })
-    if (result.ok) setHistory(result.entries)
+    if (result.ok) {
+      setHistory(result.entries)
+      await refreshAvailability()
+    }
     else setHistoryError(result.error)
   }
 
@@ -195,6 +218,7 @@ function App(): React.JSX.Element {
     if (!media || !directory) return
     const existingSong = history.find((entry) => entry.media.id === media.id)
     setDownloading(true)
+    setDownloadProgress({ phase: 'downloading', percent: 0, detail: 'Iniciando descarga' })
     setDownloadedFile('')
     setAnalysis(null)
     setAnalysisError('')
@@ -212,6 +236,7 @@ function App(): React.JSX.Element {
       if (result.ok) {
         setDownloadedFile(result.filePath)
         setAnalyzing(true)
+        setDownloadProgress({ phase: 'finalizing', percent: 100, detail: 'Detectando BPM y tonalidad' })
         const analysisResult = await window.disco.analyzeAudio(result.filePath)
         if (analysisResult.ok) {
           setAnalysis(analysisResult.analysis)
@@ -238,8 +263,13 @@ function App(): React.JSX.Element {
       setError('La aplicación no pudo completar la descarga.')
     } finally {
       setDownloading(false)
+      setDownloadProgress(null)
       setAnalyzing(false)
     }
+  }
+
+  async function cancelDownload(): Promise<void> {
+    await window.disco.cancelDownload()
   }
 
   async function removeHistory(id: string): Promise<void> {
@@ -373,6 +403,16 @@ function App(): React.JSX.Element {
       setFormatPreviewKey('')
       setFormatPreviewUrl('')
     }
+    await refreshAvailability()
+  }
+
+  async function relinkFile(historyId: string, target: { format: AudioFormat } | { sampleId: string }): Promise<void> {
+    setHistoryError('')
+    const result = await window.disco.relinkHistoryFile({ historyId, ...target })
+    if (result.ok) {
+      setHistory(result.entries)
+      await refreshAvailability()
+    } else setHistoryError(result.error)
   }
 
   async function updateOrganization(
@@ -913,7 +953,14 @@ function App(): React.JSX.Element {
                 </fieldset>
                 <button className="folder-button" type="button" onClick={selectFolder} disabled={downloading}>{directory ? 'Cambiar carpeta' : 'Elegir carpeta'}</button>
                 {directory && <span className="folder-path" title={directory}>{directory}</span>}
-                <button className="download-button" type="button" onClick={download} disabled={!directory || downloading}>{downloading ? `Preparando ${format.toUpperCase()}…` : `Descargar y analizar en ${format.toUpperCase()}`}</button>
+                <button className="download-button" type="button" onClick={download} disabled={!directory || downloading}>{downloading ? `Preparando ${format.toUpperCase()}…` : error ? `Reintentar en ${format.toUpperCase()}` : `Descargar y analizar en ${format.toUpperCase()}`}</button>
+                {downloading && downloadProgress && (
+                  <div className="download-progress" role="status" aria-live="polite">
+                    <div><span>{downloadProgress.detail}</span><strong>{downloadProgress.percent === null ? '…' : `${Math.round(downloadProgress.percent)}%`}</strong></div>
+                    <progress max="100" value={downloadProgress.percent ?? undefined} />
+                    <button type="button" onClick={() => void cancelDownload()}>Cancelar</button>
+                  </div>
+                )}
                 {analyzing && <p className="analysis-status" role="status">Detectando BPM y tonalidad…</p>}
               </div>
             </div>
@@ -1093,10 +1140,10 @@ function App(): React.JSX.Element {
                   <div className="history-actions">
                     {view === 'identify' && <button type="button" onClick={() => openIdentification(entry)}>Revisar</button>}
                     {view === 'sample' && !activeEntry && <button type="button" onClick={() => void openSampler(entry)}>Abrir editor</button>}
-                    {view === 'collection' && <button type="button" onClick={() => void openSampler(entry)}>Samplear</button>}
+                    {view === 'collection' && <button type="button" disabled={availableAudioFiles[`${entry.id}:${entry.format}`] === false} onClick={() => void openSampler(entry)}>Samplear</button>}
                     {view === 'collection' && <button type="button" onClick={() => openIdentification(entry)}>Editar datos</button>}
                     {view === 'collection' && <button type="button" onClick={() => prepareAnotherFormat(entry)}>Otro formato</button>}
-                    <button type="button" onClick={() => window.disco.revealFile(entry.filePath)}>Mostrar</button>
+                    <button type="button" disabled={availableAudioFiles[`${entry.id}:${entry.format}`] === false} onClick={() => window.disco.revealFile(entry.filePath)}>Mostrar</button>
                     {view !== 'sample' && <button className="remove-button" type="button" onClick={() => removeHistory(entry.id)}>Quitar</button>}
                   </div>
                   {view === 'collection' && (
@@ -1106,22 +1153,25 @@ function App(): React.JSX.Element {
                         {entry.audioFiles.map((file) => {
                           const previewKey = `${entry.id}:${file.format}`
                           const isPrimary = entry.format === file.format
+                          const isAvailable = availableAudioFiles[previewKey] !== false
                           return (
                             <article className="format-file-row" key={previewKey}>
                               <div className="format-file-copy">
                                 <strong>{file.format.toUpperCase()}</strong>
-                                <span>{isPrimary ? 'Principal' : `Añadido ${formatDate(file.createdAt)}`}</span>
+                                <span className={isAvailable ? '' : 'missing-file'}>{isAvailable ? (isPrimary ? 'Principal' : `Añadido ${formatDate(file.createdAt)}`) : 'Archivo no encontrado'}</span>
                               </div>
                               <div className="format-file-actions">
-                                <button type="button" onClick={() => void toggleFormatPreview(entry.id, file.format)}>
+                                <button type="button" disabled={!isAvailable} onClick={() => void toggleFormatPreview(entry.id, file.format)}>
                                   {formatPreviewKey === previewKey ? 'Cerrar' : 'Escuchar'}
                                 </button>
-                                <button type="button" onClick={() => void openSamplerWithFormat(entry, file.format)}>Samplear</button>
+                                <button type="button" disabled={!isAvailable} onClick={() => void openSamplerWithFormat(entry, file.format)}>Samplear</button>
                                 <details className="sample-menu">
                                   <summary aria-label={`Más acciones para ${file.format.toUpperCase()}`}>···</summary>
                                   <div>
-                                    {!isPrimary && <button type="button" onClick={() => void setPrimaryFormat(entry.id, file.format)}>Usar como principal</button>}
-                                    <button type="button" onClick={() => window.disco.revealFile(file.filePath)}>Localizar</button>
+                                    {!isPrimary && <button type="button" disabled={!isAvailable} onClick={() => void setPrimaryFormat(entry.id, file.format)}>Usar como principal</button>}
+                                    {isAvailable
+                                      ? <button type="button" onClick={() => window.disco.revealFile(file.filePath)}>Localizar</button>
+                                      : <button type="button" onClick={() => void relinkFile(entry.id, { format: file.format })}>Volver a enlazar</button>}
                                     <button className="destructive" type="button" disabled={entry.audioFiles.length === 1} onClick={() => void removeAudioFormat(entry.id, file.format)}>Eliminar formato</button>
                                   </div>
                                 </details>
@@ -1147,17 +1197,19 @@ function App(): React.JSX.Element {
                                   <button type="button" onClick={() => setRenamingSampleId('')}>Cancelar</button>
                                 </form>
                               ) : <strong>{sample.name}</strong>}
-                              <span>{formatTimestamp(sample.startSeconds)}–{formatTimestamp(sample.endSeconds)} · {sample.format.toUpperCase()}{sample.normalizePeak ? ' · normalizado' : ''}</span>
+                              <span className={availableSamples[`${entry.id}:${sample.id}`] === false ? 'missing-file' : ''}>{availableSamples[`${entry.id}:${sample.id}`] === false ? 'Archivo no encontrado' : `${formatTimestamp(sample.startSeconds)}–${formatTimestamp(sample.endSeconds)} · ${sample.format.toUpperCase()}${sample.normalizePeak ? ' · normalizado' : ''}`}</span>
                             </div>
                             <div className="sample-row-actions">
-                              <button type="button" onClick={() => void toggleSamplePreview(entry.id, sample.id)}>{samplePreviewId === sample.id ? 'Cerrar' : 'Escuchar'}</button>
+                              <button type="button" disabled={availableSamples[`${entry.id}:${sample.id}`] === false} onClick={() => void toggleSamplePreview(entry.id, sample.id)}>{samplePreviewId === sample.id ? 'Cerrar' : 'Escuchar'}</button>
                               <details className="sample-menu">
                                 <summary aria-label={`Más acciones para ${sample.name}`}>···</summary>
                                 <div>
                                   {view === 'sample' && <button type="button" onClick={() => editSample(sample)} disabled={editingSampleId === sample.id}>Editar</button>}
                                   {view === 'sample' && <button type="button" onClick={() => duplicateSample(sample)}>Duplicar</button>}
                                   <button type="button" onClick={() => beginSampleRename(sample)}>Renombrar</button>
-                                  <button type="button" onClick={() => window.disco.revealFile(sample.filePath)}>Localizar</button>
+                                  {availableSamples[`${entry.id}:${sample.id}`] === false
+                                    ? <button type="button" onClick={() => void relinkFile(entry.id, { sampleId: sample.id })}>Volver a enlazar</button>
+                                    : <button type="button" onClick={() => window.disco.revealFile(sample.filePath)}>Localizar</button>}
                                   <button className="destructive" type="button" onClick={() => void removeSample(entry.id, sample.id)}>Eliminar</button>
                                 </div>
                               </details>
