@@ -4,7 +4,35 @@ import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../../shared/me
 import type { AudioAnalysis, AudioFormat, DownloadProgress, HistoryEntry, MediaInfo, ProjectStatus, SampleFormat } from '../../shared/media'
 import { evaluateAnalysis } from './analysisEvaluation'
 
-type AppView = 'download' | 'identify' | 'sample' | 'collection' | 'organize'
+type AppView = 'download' | 'identify' | 'sample' | 'collection' | 'organize' | 'settings'
+type AppSettings = {
+  directory: string
+  downloadFormat: AudioFormat
+  sampleFormatMode: 'source' | 'fixed'
+  fixedSampleFormat: SampleFormat
+  normalizeSamples: boolean
+  loopSelection: boolean
+  reduceMotion: boolean
+}
+
+const SETTINGS_KEY = 'disco:settings:v1'
+const DEFAULT_SETTINGS: AppSettings = {
+  directory: '',
+  downloadFormat: 'wav',
+  sampleFormatMode: 'source',
+  fixedSampleFormat: 'wav',
+  normalizeSamples: false,
+  loopSelection: true,
+  reduceMotion: false
+}
+
+function loadSettings(): AppSettings {
+  try {
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') }
+  } catch {
+    return DEFAULT_SETTINGS
+  }
+}
 
 const MUSICAL_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
 const CAMELOT_MAJOR = ['8B', '3B', '10B', '5B', '12B', '7B', '2B', '9B', '4B', '11B', '6B', '1B']
@@ -51,13 +79,14 @@ function defaultSampleFormat(sourceFormat: AudioFormat): SampleFormat {
 }
 
 function App(): React.JSX.Element {
+  const [settings, setSettings] = useState<AppSettings>(loadSettings)
   const [view, setView] = useState<AppView>('download')
   const [url, setUrl] = useState('')
   const [media, setMedia] = useState<MediaInfo | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [format, setFormat] = useState<AudioFormat>('wav')
-  const [directory, setDirectory] = useState('')
+  const [format, setFormat] = useState<AudioFormat>(() => loadSettings().downloadFormat)
+  const [directory, setDirectory] = useState(() => loadSettings().directory)
   const [downloading, setDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null)
   const [downloadedFile, setDownloadedFile] = useState('')
@@ -85,7 +114,7 @@ function App(): React.JSX.Element {
   const [waveformViewStart, setWaveformViewStart] = useState(0)
   const [selectionStart, setSelectionStart] = useState(0)
   const [selectionEnd, setSelectionEnd] = useState(0)
-  const [loopSelection, setLoopSelection] = useState(true)
+  const [loopSelection, setLoopSelection] = useState(() => loadSettings().loopSelection)
   const [sampleFormat, setSampleFormat] = useState<SampleFormat>('wav')
   const [exportingSample, setExportingSample] = useState(false)
   const [exportedSample, setExportedSample] = useState('')
@@ -100,7 +129,7 @@ function App(): React.JSX.Element {
   const [sampleNameDraft, setSampleNameDraft] = useState('')
   const [openSampleMenuId, setOpenSampleMenuId] = useState('')
   const [openSongMenuId, setOpenSongMenuId] = useState('')
-  const [normalizeSample, setNormalizeSample] = useState(false)
+  const [normalizeSample, setNormalizeSample] = useState(() => loadSettings().normalizeSamples)
   const [selectedBars, setSelectedBars] = useState<number | null>(null)
   const [organizeSearch, setOrganizeSearch] = useState('')
   const [organizeFavoritesOnly, setOrganizeFavoritesOnly] = useState(false)
@@ -158,6 +187,11 @@ function App(): React.JSX.Element {
   }, [])
 
   useEffect(() => window.disco.onDownloadProgress(setDownloadProgress), [])
+
+  useEffect(() => {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+    document.documentElement.classList.toggle('reduce-motion', settings.reduceMotion)
+  }, [settings])
 
   useEffect(() => {
     const checkFiles = (): void => { void refreshAvailability() }
@@ -241,7 +275,10 @@ function App(): React.JSX.Element {
 
   async function selectFolder(): Promise<void> {
     const selectedDirectory = await window.disco.selectFolder()
-    if (selectedDirectory) setDirectory(selectedDirectory)
+    if (selectedDirectory) {
+      setDirectory(selectedDirectory)
+      setSettings((current) => ({ ...current, directory: selectedDirectory }))
+    }
   }
 
   async function download(): Promise<void> {
@@ -379,7 +416,9 @@ function App(): React.JSX.Element {
   async function openSampler(entry: HistoryEntry): Promise<void> {
     if (playingEntryId !== entry.id) {
       setEditingSampleId('')
-      setSampleFormat(defaultSampleFormat(entry.format))
+      setSampleFormat(settings.sampleFormatMode === 'source' ? defaultSampleFormat(entry.format) : settings.fixedSampleFormat)
+      setNormalizeSample(settings.normalizeSamples)
+      setLoopSelection(settings.loopSelection)
       await togglePlayer(entry.id)
     }
     setView('sample')
@@ -397,7 +436,9 @@ function App(): React.JSX.Element {
     setFormatPreviewKey('')
     setFormatPreviewUrl('')
     setEditingSampleId('')
-    setSampleFormat(defaultSampleFormat(audioFormat))
+    setSampleFormat(settings.sampleFormatMode === 'source' ? defaultSampleFormat(audioFormat) : settings.fixedSampleFormat)
+    setNormalizeSample(settings.normalizeSamples)
+    setLoopSelection(settings.loopSelection)
     await togglePlayer(entry.id, audioFormat)
     setView('sample')
   }
@@ -960,14 +1001,17 @@ function App(): React.JSX.Element {
             {currentEntry && currentEntry.analysisReview !== 'pending' && <button className="finish-work" type="button" onClick={finishCurrentWork}>Finalizar trabajo</button>}
           </div>
         </section>
+        <button className={`sidebar-settings ${view === 'settings' ? 'active' : ''}`} type="button" aria-current={view === 'settings' ? 'page' : undefined} onClick={() => setView('settings')}>
+          <span aria-hidden="true">⚙</span> Ajustes
+        </button>
         <div className="sidebar-footer"><span>Motor listo</span><span>v{window.disco.version}</span></div>
       </aside>
 
       <main className="app-main">
       <header className="topbar">
         <div>
-          <span className="eyebrow">{navigation.find((item) => item.id === view)?.label}</span>
-          <strong>{view === 'download' ? 'Del enlace al estudio.' : view === 'identify' ? 'Revisa antes de guardar.' : view === 'sample' ? 'Encuentra el fragmento.' : view === 'collection' ? 'Tu música, siempre editable.' : 'Pon orden a tus proyectos.'}</strong>
+          <span className="eyebrow">{view === 'settings' ? 'Ajustes' : navigation.find((item) => item.id === view)?.label}</span>
+          <strong>{view === 'download' ? 'Del enlace al estudio.' : view === 'identify' ? 'Revisa antes de guardar.' : view === 'sample' ? 'Encuentra el fragmento.' : view === 'collection' ? 'Tu música, siempre editable.' : view === 'organize' ? 'Pon orden a tus proyectos.' : 'Configura tu forma de trabajar.'}</strong>
         </div>
         <span className="engine-status"><span aria-hidden="true" /> Motor listo</span>
       </header>
@@ -1462,6 +1506,68 @@ function App(): React.JSX.Element {
               ))}
             </div>
           )}
+        </section>}
+
+        {view === 'settings' && <section className="settings-view">
+          <div className="settings-intro">
+            <p className="eyebrow">AJUSTES</p>
+            <h1>Tu flujo, a tu manera.</h1>
+            <p className="intro">DISCO recordará estas preferencias la próxima vez que lo abras.</p>
+          </div>
+
+          <div className="settings-groups">
+            <section className="settings-group" aria-labelledby="download-settings-title">
+              <div><span className="settings-icon" aria-hidden="true">↓</span><div><h2 id="download-settings-title">Descargas</h2><p>Destino y formato que DISCO seleccionará al empezar.</p></div></div>
+              <label className="settings-row settings-folder">
+                <span><strong>Carpeta predeterminada</strong><small title={directory}>{directory || 'Todavía no has elegido una carpeta'}</small></span>
+                <button type="button" onClick={() => void selectFolder()}>{directory ? 'Cambiar' : 'Elegir'}</button>
+              </label>
+              <label className="settings-row">
+                <span><strong>Formato de descarga</strong><small>Se puede cambiar en cada descarga.</small></span>
+                <select value={settings.downloadFormat} onChange={(event) => {
+                  const value = event.target.value as AudioFormat
+                  setSettings((current) => ({ ...current, downloadFormat: value }))
+                  setFormat(value)
+                }}>
+                  {AUDIO_FORMATS.map((audioFormat) => <option value={audioFormat} key={audioFormat}>{audioFormat.toUpperCase()}</option>)}
+                </select>
+              </label>
+            </section>
+
+            <section className="settings-group" aria-labelledby="sample-settings-title">
+              <div><span className="settings-icon" aria-hidden="true">◫</span><div><h2 id="sample-settings-title">Samplea</h2><p>Valores iniciales para nuevos fragmentos.</p></div></div>
+              <label className="settings-row">
+                <span><strong>Formato inicial</strong><small>Seguir la fuente evita conversiones innecesarias.</small></span>
+                <select value={settings.sampleFormatMode} onChange={(event) => setSettings((current) => ({ ...current, sampleFormatMode: event.target.value as AppSettings['sampleFormatMode'] }))}>
+                  <option value="source">Seguir la fuente</option>
+                  <option value="fixed">Formato fijo</option>
+                </select>
+              </label>
+              {settings.sampleFormatMode === 'fixed' && <label className="settings-row">
+                <span><strong>Formato fijo</strong><small>Aplicado al abrir una canción en Samplea.</small></span>
+                <select value={settings.fixedSampleFormat} onChange={(event) => setSettings((current) => ({ ...current, fixedSampleFormat: event.target.value as SampleFormat }))}>
+                  {SAMPLE_FORMATS.map((sampleOption) => <option value={sampleOption} key={sampleOption}>{sampleOption.toUpperCase()}</option>)}
+                </select>
+              </label>}
+              <label className="settings-row toggle-row">
+                <span><strong>Normalizar samples</strong><small>Ajusta el pico a −1 dBFS por defecto.</small></span>
+                <input type="checkbox" checked={settings.normalizeSamples} onChange={(event) => setSettings((current) => ({ ...current, normalizeSamples: event.target.checked }))} />
+              </label>
+              <label className="settings-row toggle-row">
+                <span><strong>Repetir selección</strong><small>Activa el bucle al abrir Samplea.</small></span>
+                <input type="checkbox" checked={settings.loopSelection} onChange={(event) => setSettings((current) => ({ ...current, loopSelection: event.target.checked }))} />
+              </label>
+            </section>
+
+            <section className="settings-group" aria-labelledby="interface-settings-title">
+              <div><span className="settings-icon" aria-hidden="true">Aa</span><div><h2 id="interface-settings-title">Interfaz</h2><p>Comportamiento visual y accesibilidad.</p></div></div>
+              <label className="settings-row toggle-row">
+                <span><strong>Reducir animaciones</strong><small>Desactiva transiciones y movimientos decorativos.</small></span>
+                <input type="checkbox" checked={settings.reduceMotion} onChange={(event) => setSettings((current) => ({ ...current, reduceMotion: event.target.checked }))} />
+              </label>
+              <div className="settings-row app-version"><span><strong>Versión de DISCO</strong><small>Aplicación de escritorio</small></span><code>v{window.disco.version}</code></div>
+            </section>
+          </div>
         </section>}
 
         {view === 'organize' && <section className="organize-view">
