@@ -11,7 +11,8 @@ import type {
   WaveformResult,
   SampleExportRequest,
   SampleExportResult,
-  SampleRenameRequest
+  SampleRenameRequest,
+  HistoryAudioFileRequest
 } from '../shared/media'
 
 contextBridge.exposeInMainWorld('disco', {
@@ -29,15 +30,19 @@ contextBridge.exposeInMainWorld('disco', {
     ipcRenderer.invoke('history:save', request),
   updateHistoryAnalysis: (request: HistoryAnalysisUpdate): Promise<HistoryResult> =>
     ipcRenderer.invoke('history:update-analysis', request),
-  getAudioSource: (id: string): Promise<AudioSourceResult> =>
-    ipcRenderer.invoke('history:audio-source', id),
+  getAudioSource: (request: HistoryAudioFileRequest): Promise<AudioSourceResult> =>
+    ipcRenderer.invoke('history:audio-source', request),
+  setPrimaryAudioFile: (request: HistoryAudioFileRequest): Promise<HistoryResult> =>
+    ipcRenderer.invoke('history:audio-primary', request),
+  removeAudioFile: (request: HistoryAudioFileRequest): Promise<HistoryResult> =>
+    ipcRenderer.invoke('history:audio-remove', request),
   getSampleSource: (historyId: string, sampleId: string): Promise<AudioSourceResult> =>
     ipcRenderer.invoke('history:sample-source', historyId, sampleId),
   renameSample: (request: SampleRenameRequest): Promise<HistoryResult> =>
     ipcRenderer.invoke('history:sample-rename', request),
   removeSample: (historyId: string, sampleId: string): Promise<HistoryResult> =>
     ipcRenderer.invoke('history:sample-remove', historyId, sampleId),
-  getWaveform: (id: string): Promise<WaveformResult> => ipcRenderer.invoke('history:waveform', id),
+  getWaveform: (request: HistoryAudioFileRequest): Promise<WaveformResult> => ipcRenderer.invoke('history:waveform', request),
   exportSample: (request: SampleExportRequest): Promise<SampleExportResult> =>
     ipcRenderer.invoke('sample:export', request),
   removeHistory: (id: string): Promise<HistoryResult> => ipcRenderer.invoke('history:remove', id)

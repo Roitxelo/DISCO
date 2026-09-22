@@ -5,18 +5,20 @@ import { rename, rm, stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
-import { SAMPLE_FORMATS } from '../shared/media'
+import { AUDIO_FORMATS, SAMPLE_FORMATS } from '../shared/media'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
 import { analyzeAudio } from './services/audioAnalysis'
 import { generateWaveform } from './services/waveform'
 import { exportSample } from './services/sampleExport'
 import {
   listHistory,
+  removeHistoryAudioFile,
   removeHistorySample,
   renameHistorySample,
   saveHistorySample,
   removeHistoryEntry,
   saveHistoryEntry,
+  setPrimaryHistoryAudioFile,
   updateHistoryAnalysis
 } from './services/history'
 import type {
@@ -31,7 +33,8 @@ import type {
   WaveformResult,
   SampleExportRequest,
   SampleExportResult,
-  SampleRenameRequest
+  SampleRenameRequest,
+  HistoryAudioFileRequest
 } from '../shared/media'
 
 protocol.registerSchemesAsPrivileged([
@@ -124,7 +127,7 @@ app.whenReady().then(() => {
 
     const filePath = url.hostname === 'sample'
       ? entry.samples.find((sample) => sample.id === parts[1])?.filePath
-      : entry.filePath
+      : entry.audioFiles.find((file) => file.format === parts[1])?.filePath ?? entry.filePath
     if (!filePath) return new Response('Audio no autorizado.', { status: 404 })
 
     try {
@@ -213,15 +216,64 @@ app.whenReady().then(() => {
     }
   })
 
-  ipcMain.handle('history:audio-source', async (_event, id: unknown): Promise<AudioSourceResult> => {
-    if (typeof id !== 'string') return { ok: false, error: 'La entrada no es válida.' }
-    const entry = (await listHistory()).find((item) => item.id === id)
+  ipcMain.handle('history:audio-source', async (_event, request: HistoryAudioFileRequest): Promise<AudioSourceResult> => {
+    if (!request || typeof request.historyId !== 'string' || !AUDIO_FORMATS.includes(request.format)) {
+      return { ok: false, error: 'El formato de audio no es válido.' }
+    }
+    const { historyId, format } = request
+    const entry = (await listHistory()).find((item) => item.id === historyId)
+    const audioFile = entry?.audioFiles.find((file) => file.format === format)
     if (!entry) return { ok: false, error: 'El audio ya no está en la biblioteca.' }
+    if (!audioFile) return { ok: false, error: 'Este formato ya no está en la colección.' }
     try {
-      await stat(entry.filePath)
-      return { ok: true, url: `disco-audio://history/${encodeURIComponent(id)}` }
+      await stat(audioFile.filePath)
+      return { ok: true, url: `disco-audio://history/${encodeURIComponent(historyId)}/${format}` }
     } catch {
       return { ok: false, error: 'No se encuentra el archivo. Puede que se haya movido o eliminado.' }
+    }
+  })
+
+  ipcMain.handle('history:audio-primary', async (_event, request: HistoryAudioFileRequest): Promise<HistoryResult> => {
+    if (!request || typeof request.historyId !== 'string' || !AUDIO_FORMATS.includes(request.format)) {
+      return { ok: false, error: 'El formato de audio no es válido.' }
+    }
+    const entry = (await listHistory()).find((item) => item.id === request.historyId)
+    const audioFile = entry?.audioFiles.find((file) => file.format === request.format)
+    if (!entry || !audioFile) return { ok: false, error: 'Este formato ya no está en la colección.' }
+    try {
+      await stat(audioFile.filePath)
+      return { ok: true, entries: await setPrimaryHistoryAudioFile(request.historyId, request.format) }
+    } catch {
+      return { ok: false, error: 'No se encuentra el archivo. Puedes localizarlo o volver a descargar este formato.' }
+    }
+  })
+
+  ipcMain.handle('history:audio-remove', async (_event, request: HistoryAudioFileRequest): Promise<HistoryResult> => {
+    if (!request || typeof request.historyId !== 'string' || !AUDIO_FORMATS.includes(request.format)) {
+      return { ok: false, error: 'El formato de audio no es válido.' }
+    }
+    const entry = (await listHistory()).find((item) => item.id === request.historyId)
+    const audioFile = entry?.audioFiles.find((file) => file.format === request.format)
+    if (!entry || !audioFile) return { ok: false, error: 'Este formato ya no está en la colección.' }
+    if (entry.audioFiles.length === 1) {
+      return { ok: false, error: 'Una canción debe conservar al menos un formato de audio.' }
+    }
+    const choice = await dialog.showMessageBox({
+      type: 'warning',
+      title: 'Eliminar formato',
+      message: `¿Qué quieres hacer con el archivo ${request.format.toUpperCase()}?`,
+      detail: 'La canción, sus datos y sus samples seguirán guardados en DISCO.',
+      buttons: ['Cancelar', 'Quitar de DISCO', 'Eliminar también el archivo'],
+      cancelId: 0,
+      defaultId: 0,
+      noLink: true
+    })
+    if (choice.response === 0) return { ok: true, entries: await listHistory() }
+    try {
+      if (choice.response === 2) await rm(audioFile.filePath, { force: true })
+      return { ok: true, entries: await removeHistoryAudioFile(request.historyId, request.format) }
+    } catch {
+      return { ok: false, error: 'No se pudo eliminar el formato.' }
     }
   })
 
@@ -293,12 +345,16 @@ app.whenReady().then(() => {
     }
   })
 
-  ipcMain.handle('history:waveform', async (_event, id: unknown): Promise<WaveformResult> => {
-    if (typeof id !== 'string') return { ok: false, error: 'La entrada no es válida.' }
-    const entry = (await listHistory()).find((item) => item.id === id)
+  ipcMain.handle('history:waveform', async (_event, request: HistoryAudioFileRequest): Promise<WaveformResult> => {
+    if (!request || typeof request.historyId !== 'string' || !AUDIO_FORMATS.includes(request.format)) {
+      return { ok: false, error: 'El formato de audio no es válido.' }
+    }
+    const entry = (await listHistory()).find((item) => item.id === request.historyId)
     if (!entry) return { ok: false, error: 'El audio ya no está en la biblioteca.' }
+    const audioFile = entry.audioFiles.find((file) => file.format === request.format)
+    if (!audioFile) return { ok: false, error: 'Este formato ya no está en la colección.' }
     try {
-      return { ok: true, imageUrl: await generateWaveform(entry.filePath) }
+      return { ok: true, imageUrl: await generateWaveform(audioFile.filePath) }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo generar la forma de onda.'
       return { ok: false, error: message }

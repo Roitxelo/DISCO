@@ -12,7 +12,8 @@ import type {
   WaveformResult,
   SampleExportRequest,
   SampleExportResult,
-  SampleRenameRequest
+  SampleRenameRequest,
+  HistoryAudioFileRequest
 } from '../shared/media'
 
 declare global {
@@ -28,11 +29,13 @@ declare global {
       listHistory: () => Promise<HistoryResult>
       saveHistory: (request: HistorySaveRequest) => Promise<HistoryResult>
       updateHistoryAnalysis: (request: HistoryAnalysisUpdate) => Promise<HistoryResult>
-      getAudioSource: (id: string) => Promise<AudioSourceResult>
+      getAudioSource: (request: HistoryAudioFileRequest) => Promise<AudioSourceResult>
+      setPrimaryAudioFile: (request: HistoryAudioFileRequest) => Promise<HistoryResult>
+      removeAudioFile: (request: HistoryAudioFileRequest) => Promise<HistoryResult>
       getSampleSource: (historyId: string, sampleId: string) => Promise<AudioSourceResult>
       renameSample: (request: SampleRenameRequest) => Promise<HistoryResult>
       removeSample: (historyId: string, sampleId: string) => Promise<HistoryResult>
-      getWaveform: (id: string) => Promise<WaveformResult>
+      getWaveform: (request: HistoryAudioFileRequest) => Promise<WaveformResult>
       exportSample: (request: SampleExportRequest) => Promise<SampleExportResult>
       removeHistory: (id: string) => Promise<HistoryResult>
     }

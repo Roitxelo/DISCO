@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { app } from 'electron'
-import type { HistoryAnalysisUpdate, HistoryEntry, HistorySaveRequest } from '../../shared/media'
+import type { AudioFormat, HistoryAnalysisUpdate, HistoryEntry, HistorySaveRequest } from '../../shared/media'
 
 const MAX_ENTRIES = 200
 
@@ -123,6 +123,35 @@ export async function removeHistorySample(id: string, sampleId: string): Promise
 export async function removeHistoryEntry(id: string): Promise<HistoryEntry[]> {
   const entries = await readHistory()
   const updated = entries.filter((entry) => entry.id !== id)
+  await writeHistory(updated)
+  return updated
+}
+
+export async function setPrimaryHistoryAudioFile(id: string, format: AudioFormat): Promise<HistoryEntry[]> {
+  const entries = await readHistory()
+  const updated = entries.map((entry) => {
+    if (entry.id !== id) return entry
+    const selected = entry.audioFiles.find((file) => file.format === format)
+    return selected ? { ...entry, format: selected.format, filePath: selected.filePath } : entry
+  })
+  await writeHistory(updated)
+  return updated
+}
+
+export async function removeHistoryAudioFile(id: string, format: AudioFormat): Promise<HistoryEntry[]> {
+  const entries = await readHistory()
+  const updated = entries.map((entry) => {
+    if (entry.id !== id) return entry
+    const audioFiles = entry.audioFiles.filter((file) => file.format !== format)
+    if (audioFiles.length === 0) return entry
+    const primary = entry.format === format ? audioFiles[audioFiles.length - 1] : null
+    return {
+      ...entry,
+      audioFiles,
+      format: primary?.format ?? entry.format,
+      filePath: primary?.filePath ?? entry.filePath
+    }
+  })
   await writeHistory(updated)
   return updated
 }

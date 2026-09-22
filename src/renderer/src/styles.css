@@ -320,6 +320,17 @@ footer { padding: 20px 42px; color: #65646a; border-top: 1px solid #242428; font
 .history-actions { flex-wrap: wrap; justify-content: flex-end; }
 .history-actions .remove-button { width: 100%; }
 .associated-samples { grid-column: 1 / -1; margin: 3px 0 0; border-top: 1px solid #29282d; }
+.associated-formats { grid-column: 1 / -1; margin: 3px 0 0; border-top: 1px solid #29282d; }
+.associated-formats > summary { padding: 13px 4px 7px; color: #c8c6cb; font-size: 11px; font-weight: 700; cursor: pointer; }
+.associated-formats > summary::marker { color: #ff7046; }
+.format-file-list { display: grid; gap: 7px; padding: 4px 0 2px; }
+.format-file-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 8px; background: #17171a; }
+.format-file-copy { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+.format-file-copy strong { color: #f1ede8; font-size: 12px; }
+.format-file-copy span { overflow: hidden; color: #85838a; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.format-file-actions { display: flex; gap: 6px; }
+.format-file-actions > button { min-height: 34px; padding: 6px 10px; color: #d6d3d7; border: 1px solid #3b3a40; background: #202025; font-size: 10px; }
+.format-file-row > audio { grid-column: 1 / -1; width: 100%; height: 36px; accent-color: #ff6335; }
 .associated-samples summary { padding: 13px 4px 7px; color: #c8c6cb; font-size: 11px; font-weight: 700; cursor: pointer; }
 .associated-samples summary::marker { color: #ff7046; }
 .sample-list { display: grid; gap: 7px; padding: 4px 0 2px; }
@@ -412,6 +423,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .organize-grid article > b { grid-column: 2; }
   .sample-row { grid-template-columns: 1fr; }
   .sample-row-actions { grid-column: 1; }
+  .format-file-row { grid-template-columns: 1fr; }
+  .format-file-actions { grid-column: 1; }
   .studio-entry { grid-template-columns: 70px minmax(0, 1fr); }
   .studio-entry > img, .studio-entry > .history-placeholder { width: 70px; height: 52px; }
   .studio-entry .history-actions { grid-column: 1 / -1; }

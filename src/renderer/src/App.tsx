@@ -80,6 +80,8 @@ function App(): React.JSX.Element {
   const [sampleError, setSampleError] = useState('')
   const [samplePreviewId, setSamplePreviewId] = useState('')
   const [samplePreviewUrl, setSamplePreviewUrl] = useState('')
+  const [formatPreviewKey, setFormatPreviewKey] = useState('')
+  const [formatPreviewUrl, setFormatPreviewUrl] = useState('')
   const [editingSampleId, setEditingSampleId] = useState('')
   const [pendingSampleName, setPendingSampleName] = useState('')
   const [renamingSampleId, setRenamingSampleId] = useState('')
@@ -228,9 +230,9 @@ function App(): React.JSX.Element {
     else setHistoryError(result.error)
   }
 
-  async function togglePlayer(id: string): Promise<void> {
+  async function togglePlayer(id: string, audioFormat?: AudioFormat): Promise<void> {
     setHistoryError('')
-    if (playingEntryId === id) {
+    if (playingEntryId === id && !audioFormat) {
       setPlayingEntryId('')
       setAudioSource('')
       setWaveformUrl('')
@@ -238,7 +240,10 @@ function App(): React.JSX.Element {
       setIsPlaying(false)
       return
     }
-    const result = await window.disco.getAudioSource(id)
+    const entry = history.find((item) => item.id === id)
+    const selectedFormat = audioFormat ?? entry?.format
+    if (!selectedFormat) return
+    const result = await window.disco.getAudioSource({ historyId: id, format: selectedFormat })
     if (result.ok) {
       setPlayingEntryId(id)
       setAudioSource(result.url)
@@ -254,7 +259,7 @@ function App(): React.JSX.Element {
       setExportedSample('')
       setSampleError('')
       setWaveformLoading(true)
-      const waveform = await window.disco.getWaveform(id)
+      const waveform = await window.disco.getWaveform({ historyId: id, format: selectedFormat })
       if (waveform.ok) setWaveformUrl(waveform.imageUrl)
       else setHistoryError(waveform.error)
       setWaveformLoading(false)
@@ -285,6 +290,64 @@ function App(): React.JSX.Element {
       await togglePlayer(entry.id)
     }
     setView('sample')
+  }
+
+  async function openSamplerWithFormat(entry: HistoryEntry, audioFormat: AudioFormat): Promise<void> {
+    if (entry.format !== audioFormat) {
+      const result = await window.disco.setPrimaryAudioFile({ historyId: entry.id, format: audioFormat })
+      if (!result.ok) {
+        setHistoryError(result.error)
+        return
+      }
+      setHistory(result.entries)
+    }
+    setFormatPreviewKey('')
+    setFormatPreviewUrl('')
+    setEditingSampleId('')
+    await togglePlayer(entry.id, audioFormat)
+    setView('sample')
+  }
+
+  async function setPrimaryFormat(historyId: string, audioFormat: AudioFormat): Promise<void> {
+    setHistoryError('')
+    const result = await window.disco.setPrimaryAudioFile({ historyId, format: audioFormat })
+    if (result.ok) setHistory(result.entries)
+    else setHistoryError(result.error)
+  }
+
+  async function toggleFormatPreview(historyId: string, audioFormat: AudioFormat): Promise<void> {
+    const previewKey = `${historyId}:${audioFormat}`
+    setHistoryError('')
+    if (formatPreviewKey === previewKey) {
+      setFormatPreviewKey('')
+      setFormatPreviewUrl('')
+      return
+    }
+    const result = await window.disco.getAudioSource({ historyId, format: audioFormat })
+    if (result.ok) {
+      setSamplePreviewId('')
+      setSamplePreviewUrl('')
+      setFormatPreviewKey(previewKey)
+      setFormatPreviewUrl(result.url)
+    } else setHistoryError(result.error)
+  }
+
+  async function removeAudioFormat(historyId: string, audioFormat: AudioFormat): Promise<void> {
+    setHistoryError('')
+    const result = await window.disco.removeAudioFile({ historyId, format: audioFormat })
+    if (!result.ok) {
+      setHistoryError(result.error)
+      return
+    }
+    setHistory(result.entries)
+    const previewKey = `${historyId}:${audioFormat}`
+    const stillExists = result.entries.some((entry) =>
+      entry.id === historyId && entry.audioFiles.some((file) => file.format === audioFormat)
+    )
+    if (!stillExists && formatPreviewKey === previewKey) {
+      setFormatPreviewKey('')
+      setFormatPreviewUrl('')
+    }
   }
 
   function closeSampler(): void {
@@ -324,6 +387,8 @@ function App(): React.JSX.Element {
     setIsPlaying(false)
     setSamplePreviewId('')
     setSamplePreviewUrl('')
+    setFormatPreviewKey('')
+    setFormatPreviewUrl('')
     setView('collection')
   }
 
@@ -987,6 +1052,40 @@ function App(): React.JSX.Element {
                     <button type="button" onClick={() => window.disco.revealFile(entry.filePath)}>Mostrar</button>
                     {view !== 'sample' && <button className="remove-button" type="button" onClick={() => removeHistory(entry.id)}>Quitar</button>}
                   </div>
+                  {view === 'collection' && (
+                    <details className="associated-formats">
+                      <summary>{entry.audioFiles.length} {entry.audioFiles.length === 1 ? 'formato disponible' : 'formatos disponibles'}</summary>
+                      <div className="format-file-list">
+                        {entry.audioFiles.map((file) => {
+                          const previewKey = `${entry.id}:${file.format}`
+                          const isPrimary = entry.format === file.format
+                          return (
+                            <article className="format-file-row" key={previewKey}>
+                              <div className="format-file-copy">
+                                <strong>{file.format.toUpperCase()}</strong>
+                                <span>{isPrimary ? 'Principal' : `Añadido ${formatDate(file.createdAt)}`}</span>
+                              </div>
+                              <div className="format-file-actions">
+                                <button type="button" onClick={() => void toggleFormatPreview(entry.id, file.format)}>
+                                  {formatPreviewKey === previewKey ? 'Cerrar' : 'Escuchar'}
+                                </button>
+                                <button type="button" onClick={() => void openSamplerWithFormat(entry, file.format)}>Samplear</button>
+                                <details className="sample-menu">
+                                  <summary aria-label={`Más acciones para ${file.format.toUpperCase()}`}>···</summary>
+                                  <div>
+                                    {!isPrimary && <button type="button" onClick={() => void setPrimaryFormat(entry.id, file.format)}>Usar como principal</button>}
+                                    <button type="button" onClick={() => window.disco.revealFile(file.filePath)}>Localizar</button>
+                                    <button className="destructive" type="button" disabled={entry.audioFiles.length === 1} onClick={() => void removeAudioFormat(entry.id, file.format)}>Eliminar formato</button>
+                                  </div>
+                                </details>
+                              </div>
+                              {formatPreviewKey === previewKey && formatPreviewUrl && <audio src={formatPreviewUrl} controls autoPlay preload="metadata">Tu sistema no permite reproducir este formato.</audio>}
+                            </article>
+                          )
+                        })}
+                      </div>
+                    </details>
+                  )}
                   {(view === 'collection' || view === 'sample') && entry.samples.length > 0 && (
                     <details className="associated-samples" open={view === 'sample'}>
                       <summary>{entry.samples.length} {entry.samples.length === 1 ? 'sample asociado' : 'samples asociados'}</summary>

@@ -105,6 +105,11 @@ export type SampleRenameRequest = {
   name: string
 }
 
+export type HistoryAudioFileRequest = {
+  historyId: string
+  format: AudioFormat
+}
+
 export type SampleExportResult =
   | { ok: true; filePath: string | null }
   | { ok: false; error: string }
