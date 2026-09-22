@@ -4,6 +4,8 @@ import { AUDIO_FORMATS, SAMPLE_FORMATS } from '../../shared/media'
 import type { AudioAnalysis, AudioFormat, HistoryEntry, MediaInfo, SampleFormat } from '../../shared/media'
 import { evaluateAnalysis } from './analysisEvaluation'
 
+type AppView = 'download' | 'identify' | 'sample' | 'collection' | 'organize'
+
 const MUSICAL_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
 const CAMELOT_MAJOR = ['8B', '3B', '10B', '5B', '12B', '7B', '2B', '9B', '4B', '11B', '6B', '1B']
 const CAMELOT_MINOR = ['5A', '12A', '7A', '2A', '9A', '4A', '11A', '6A', '1A', '8A', '3A', '10A']
@@ -39,6 +41,7 @@ function formatTimestamp(seconds: number): string {
 }
 
 function App(): React.JSX.Element {
+  const [view, setView] = useState<AppView>('download')
   const [url, setUrl] = useState('')
   const [media, setMedia] = useState<MediaInfo | null>(null)
   const [error, setError] = useState('')
@@ -75,9 +78,21 @@ function App(): React.JSX.Element {
   const [selectedBars, setSelectedBars] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const evaluation = useMemo(() => evaluateAnalysis(history), [history])
+  const pendingEntries = useMemo(
+    () => history.filter((entry) => entry.analysisReview === 'pending'),
+    [history]
+  )
+  const collectionEntries = useMemo(
+    () => history.filter((entry) => entry.analysisReview !== 'pending'),
+    [history]
+  )
   const activeEntry = useMemo(
     () => history.find((entry) => entry.id === playingEntryId) ?? null,
     [history, playingEntryId]
+  )
+  const currentEntry = useMemo(
+    () => history.find((entry) => entry.filePath === downloadedFile) ?? activeEntry ?? pendingEntries[0] ?? null,
+    [history, downloadedFile, activeEntry, pendingEntries]
   )
 
   useEffect(() => {
@@ -124,6 +139,7 @@ function App(): React.JSX.Element {
 
   async function download(): Promise<void> {
     if (!media || !directory) return
+    const existingSong = history.find((entry) => entry.media.id === media.id)
     setDownloading(true)
     setDownloadedFile('')
     setAnalysis(null)
@@ -149,9 +165,17 @@ function App(): React.JSX.Element {
           setSelectedKey(analysisResult.analysis.key)
           setSelectedMode(analysisResult.analysis.mode)
           await saveToHistory(result.filePath, analysisResult.analysis)
+          if (existingSong && existingSong.analysisReview !== 'pending') {
+            setAnalysis(existingSong.analysis)
+            setAnalysisReview(existingSong.analysisReview)
+            setView('collection')
+          } else {
+            setView('identify')
+          }
         } else {
           setAnalysisError(analysisResult.error)
           await saveToHistory(result.filePath, null)
+          setView('identify')
         }
       } else {
         setError(result.error)
@@ -204,6 +228,36 @@ function App(): React.JSX.Element {
     } else {
       setHistoryError(result.error)
     }
+  }
+
+  function openIdentification(entry: HistoryEntry): void {
+    setMedia(entry.media)
+    setUrl(entry.media.sourceUrl)
+    setDownloadedFile(entry.filePath)
+    setAnalysis(entry.analysis)
+    setAnalysisReview(entry.analysisReview)
+    setEditingAnalysis(false)
+    setCorrectionSaved(false)
+    if (entry.analysis) {
+      setDisplayBpm(entry.analysis.bpm)
+      setSelectedKey(entry.analysis.key)
+      setSelectedMode(entry.analysis.mode)
+    }
+    setView('identify')
+  }
+
+  async function openSampler(entry: HistoryEntry): Promise<void> {
+    if (playingEntryId !== entry.id) await togglePlayer(entry.id)
+    setView('sample')
+  }
+
+  function prepareAnotherFormat(entry: HistoryEntry): void {
+    setMedia(entry.media)
+    setUrl(entry.media.sourceUrl)
+    setDownloadedFile('')
+    setAnalysis(null)
+    setAnalysisReview('pending')
+    setView('download')
   }
 
   function playSelection(): void {
@@ -259,7 +313,11 @@ function App(): React.JSX.Element {
       normalizePeak: normalizeSample
     })
     if (result.ok) {
-      if (result.filePath) setExportedSample(result.filePath)
+      if (result.filePath) {
+        setExportedSample(result.filePath)
+        const refreshed = await window.disco.listHistory()
+        if (refreshed.ok) setHistory(refreshed.entries)
+      }
     } else {
       setSampleError(result.error)
     }
@@ -312,22 +370,76 @@ function App(): React.JSX.Element {
     setSavingCorrection(false)
   }
 
+  const navigation: Array<{ id: AppView; label: string; hint?: string }> = [
+    { id: 'download', label: 'Descarga' },
+    { id: 'identify', label: 'Identifica', hint: pendingEntries.length ? String(pendingEntries.length) : undefined },
+    { id: 'sample', label: 'Samplea' },
+    { id: 'collection', label: 'Colección' },
+    { id: 'organize', label: 'Organiza' }
+  ]
+
+  const visibleEntries = view === 'identify'
+    ? pendingEntries
+    : view === 'collection' || view === 'sample'
+      ? collectionEntries
+      : history.slice(0, 3)
+
+  const currentStep = !currentEntry
+    ? { label: 'Ninguna canción activa', detail: 'Empieza con una nueva descarga', target: 'download' as AppView }
+    : currentEntry.analysisReview === 'pending'
+      ? { label: currentEntry.media.title, detail: currentEntry.analysis ? 'Revisar identificación' : 'Análisis pendiente', target: 'identify' as AppView }
+      : { label: currentEntry.media.title, detail: 'Lista para samplear', target: 'sample' as AppView }
+
   return (
-    <main>
-      <header className="topbar">
-        <div className="brand">
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand sidebar-brand">
           <span className="brand-mark" aria-hidden="true" />
           <span>DISCO</span>
         </div>
-        <span className="version">v{window.disco.version}</span>
+        <nav className="main-navigation" aria-label="Navegación principal">
+          {navigation.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              className={view === item.id ? 'active' : ''}
+              aria-current={view === item.id ? 'page' : undefined}
+              onClick={() => setView(item.id)}
+            >
+              <span>{item.label}</span>
+              {item.hint && <span className="navigation-count" aria-label={`${item.hint} pendientes`}>{item.hint}</span>}
+            </button>
+          ))}
+        </nav>
+        <section className="current-work" aria-labelledby="current-work-title">
+          <span className="sidebar-label" id="current-work-title">Trabajo actual</span>
+          <strong title={currentStep.label}>{currentStep.label}</strong>
+          <small>{currentStep.detail}</small>
+          <button type="button" onClick={() => {
+            if (currentEntry && currentStep.target === 'identify') openIdentification(currentEntry)
+            else if (currentEntry && currentStep.target === 'sample') void openSampler(currentEntry)
+            else setView(currentStep.target)
+          }}>
+            {currentEntry ? 'Continuar' : 'Nueva descarga'}
+          </button>
+        </section>
+        <div className="sidebar-footer"><span>Motor listo</span><span>v{window.disco.version}</span></div>
+      </aside>
+
+      <main className="app-main">
+      <header className="topbar">
+        <div>
+          <span className="eyebrow">{navigation.find((item) => item.id === view)?.label}</span>
+          <strong>{view === 'download' ? 'Del enlace al estudio.' : view === 'identify' ? 'Revisa antes de guardar.' : view === 'sample' ? 'Encuentra el fragmento.' : view === 'collection' ? 'Tu música, siempre editable.' : 'Pon orden a tus proyectos.'}</strong>
+        </div>
+        <span className="engine-status"><span aria-hidden="true" /> Motor listo</span>
       </header>
 
       <section className="hero">
-        <p className="eyebrow">DOWNLOAD · IDENTIFY · SAMPLE · CONVERT · ORGANIZE</p>
-        <h1>Del enlace al estudio.</h1>
-        <p className="intro">
-          Prepara audio para producir y descubre su BPM y tonalidad desde una sola herramienta.
-        </p>
+        {view === 'download' && <>
+        <p className="eyebrow">DESCARGA</p>
+        <h1>Empieza con un enlace.</h1>
+        <p className="intro">Descarga el audio y deja que DISCO prepare su identificación musical.</p>
 
         <form className="url-form" onSubmit={analyze}>
           <label htmlFor="source-url">Enlace de YouTube</label>
@@ -356,7 +468,7 @@ function App(): React.JSX.Element {
         </form>
 
         {media && (
-          <article className="media-card">
+          <article className="media-card download-card">
             {media.thumbnailUrl && <img src={media.thumbnailUrl} alt="" />}
             <div className="media-copy">
               <span className="media-source">YouTube · {formatDuration(media.durationSeconds)}</span>
@@ -364,6 +476,37 @@ function App(): React.JSX.Element {
               <p>{media.channel}</p>
               <div className="export-panel">
                 <fieldset>
+                  <legend>Formato</legend>
+                  <div className="format-options">
+                    {AUDIO_FORMATS.map((audioFormat) => (
+                      <label key={audioFormat} className={format === audioFormat ? 'selected' : ''}>
+                        <input type="radio" name="format" value={audioFormat} checked={format === audioFormat} onChange={() => setFormat(audioFormat)} disabled={downloading} />
+                        {audioFormat.toUpperCase()}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <button className="folder-button" type="button" onClick={selectFolder} disabled={downloading}>{directory ? 'Cambiar carpeta' : 'Elegir carpeta'}</button>
+                {directory && <span className="folder-path" title={directory}>{directory}</span>}
+                <button className="download-button" type="button" onClick={download} disabled={!directory || downloading}>{downloading ? `Preparando ${format.toUpperCase()}…` : `Descargar y analizar en ${format.toUpperCase()}`}</button>
+                {analyzing && <p className="analysis-status" role="status">Detectando BPM y tonalidad…</p>}
+              </div>
+            </div>
+          </article>
+        )}
+
+        {!media && <div className="flow-summary" aria-label="Flujo de trabajo"><span><b>1</b> Descarga</span><span><b>2</b> Identifica</span><span><b>3</b> Samplea</span><span><b>4</b> Colección</span></div>}
+        </>}
+
+        {view === 'identify' && media && downloadedFile && (
+          <article className="media-card">
+            {media.thumbnailUrl && <img src={media.thumbnailUrl} alt="" />}
+            <div className="media-copy">
+              <span className="media-source">YouTube · {formatDuration(media.durationSeconds)}</span>
+              <h2>{media.title}</h2>
+              <p>{media.channel}</p>
+              <div className="export-panel">
+                <fieldset className="identification-format">
                   <legend>Formato</legend>
                   <div className="format-options">
                     {AUDIO_FORMATS.map((audioFormat) => (
@@ -381,20 +524,6 @@ function App(): React.JSX.Element {
                     ))}
                   </div>
                 </fieldset>
-
-                <button className="folder-button" type="button" onClick={selectFolder} disabled={downloading}>
-                  {directory ? 'Cambiar carpeta' : 'Elegir carpeta'}
-                </button>
-                {directory && <span className="folder-path" title={directory}>{directory}</span>}
-
-                <button
-                  className="download-button"
-                  type="button"
-                  onClick={download}
-                  disabled={!directory || downloading}
-                >
-                  {downloading ? `Preparando ${format.toUpperCase()}…` : `Descargar ${format.toUpperCase()}`}
-                </button>
 
                 {downloadedFile && (
                   <button
@@ -472,7 +601,7 @@ function App(): React.JSX.Element {
                     ) : (
                       <div className={`review-status ${analysisReview}`}>
                         {analysisReview === 'confirmed' ? 'Datos confirmados' : 'Corrección guardada'}
-                        <button type="button" onClick={() => setEditingAnalysis(true)}>Editar</button>
+                        <div><button type="button" onClick={() => setEditingAnalysis(true)}>Editar</button><button type="button" onClick={() => currentEntry && void openSampler(currentEntry)}>Continuar a Samplea</button></div>
                       </div>
                     )}
                   </section>
@@ -482,23 +611,15 @@ function App(): React.JSX.Element {
           </article>
         )}
 
-        {!media && (
-          <div className="features" aria-label="Próximas funciones">
-            <article><strong>WAV</strong><span>Formato principal</span></article>
-            <article><strong>— BPM</strong><span>Análisis rítmico</span></article>
-            <article><strong>— KEY</strong><span>Tonalidad y Camelot</span></article>
-          </div>
-        )}
-
-        <section className="library" aria-labelledby="library-title">
+        {(view === 'identify' || view === 'sample' || view === 'collection') && <section className="library" aria-labelledby="library-title">
           <div className="library-heading">
             <div>
-              <p className="eyebrow">ORGANIZE</p>
-              <h2 id="library-title">Biblioteca reciente</h2>
+              <p className="eyebrow">{view === 'identify' ? 'PENDIENTES' : view === 'sample' ? 'ELIGE UNA CANCIÓN' : 'COLECCIÓN'}</p>
+              <h2 id="library-title">{view === 'identify' ? 'Por revisar' : view === 'sample' ? 'Canciones listas para samplear' : 'Canciones validadas'}</h2>
             </div>
-            <span>{history.length} {history.length === 1 ? 'descarga' : 'descargas'}</span>
+            <span>{visibleEntries.length} {visibleEntries.length === 1 ? 'canción' : 'canciones'}</span>
           </div>
-          <details className="evaluation-panel">
+          {view === 'identify' && <details className="evaluation-panel">
             <summary>
               <span>Calidad del análisis</span>
               <span>{evaluation.reviewed} revisados · {evaluation.pending} pendientes</span>
@@ -520,20 +641,21 @@ function App(): React.JSX.Element {
                 {evaluation.reviewed < 10 && <small>La muestra todavía es pequeña; necesitaremos al menos 10–20 revisiones para extraer conclusiones.</small>}
               </div>
             )}
-          </details>
+          </details>}
           {historyError && <p className="error" role="alert">{historyError}</p>}
-          {history.length === 0 ? (
-            <p className="empty-library">Tus próximas descargas aparecerán aquí automáticamente.</p>
+          {visibleEntries.length === 0 ? (
+            <p className="empty-library">{view === 'identify' ? 'No hay canciones pendientes de revisar.' : 'Todavía no hay canciones validadas en esta sección.'}</p>
           ) : (
             <div className="history-list">
-              {history.map((entry) => (
+              {visibleEntries.map((entry) => (
                 <article className="history-entry" key={entry.id}>
                   {entry.media.thumbnailUrl ? <img src={entry.media.thumbnailUrl} alt="" /> : <div className="history-placeholder" />}
                   <div className="history-copy">
                     <strong title={entry.media.title}>{entry.media.title}</strong>
                     <span>{entry.media.channel} · {formatDate(entry.createdAt)}</span>
                     <div className="history-tags">
-                      <span>{entry.format.toUpperCase()}</span>
+                      {entry.audioFiles.map((file) => <span key={`${entry.id}-${file.format}`}>{file.format.toUpperCase()}</span>)}
+                      {entry.samples.length > 0 && <span>{entry.samples.length} {entry.samples.length === 1 ? 'sample' : 'samples'}</span>}
                       {entry.analysis && <span>{entry.analysis.bpm.toFixed(1)} BPM</span>}
                       {entry.analysis && <span>{entry.analysis.key} {entry.analysis.mode === 'major' ? 'mayor' : 'menor'}</span>}
                       {entry.analysis && <span>{entry.analysis.camelot}</span>}
@@ -542,13 +664,15 @@ function App(): React.JSX.Element {
                     </div>
                   </div>
                   <div className="history-actions">
-                    <button className={playingEntryId === entry.id ? 'active-player' : ''} type="button" onClick={() => togglePlayer(entry.id)}>
-                      {playingEntryId === entry.id ? 'Cerrar' : 'Escuchar'}
-                    </button>
+                    {view === 'identify' && <button type="button" onClick={() => openIdentification(entry)}>Revisar</button>}
+                    {view === 'sample' && <button className={playingEntryId === entry.id ? 'active-player' : ''} type="button" onClick={() => void openSampler(entry)}>{playingEntryId === entry.id ? 'Cerrar editor' : 'Crear sample'}</button>}
+                    {view === 'collection' && <button type="button" onClick={() => void openSampler(entry)}>Samplear</button>}
+                    {view === 'collection' && <button type="button" onClick={() => openIdentification(entry)}>Editar datos</button>}
+                    {view === 'collection' && <button type="button" onClick={() => prepareAnotherFormat(entry)}>Otro formato</button>}
                     <button type="button" onClick={() => window.disco.revealFile(entry.filePath)}>Mostrar</button>
                     <button className="remove-button" type="button" onClick={() => removeHistory(entry.id)}>Quitar</button>
                   </div>
-                  {playingEntryId === entry.id && audioSource && (
+                  {view === 'sample' && playingEntryId === entry.id && audioSource && (
                     <div className="history-player">
                       <div className="waveform-panel">
                         {waveformLoading && <div className="waveform-loading">Generando forma de onda…</div>}
@@ -664,11 +788,22 @@ function App(): React.JSX.Element {
               ))}
             </div>
           )}
-        </section>
+        </section>}
+
+        {view === 'organize' && <section className="organize-view">
+          <div className="organize-intro"><p className="eyebrow">ORGANIZA</p><h1>Tu colección, con contexto.</h1><p className="intro">Carpetas, etiquetas, favoritos y estados de proyecto estarán aquí sin alterar los archivos originales.</p></div>
+          <div className="organize-grid">
+            <article><span className="organize-icon">★</span><div><strong>Favoritos</strong><small>Acceso rápido a tus mejores hallazgos</small></div><b>0</b></article>
+            <article><span className="organize-icon">#</span><div><strong>Etiquetas</strong><small>Agrupa por género, energía o uso</small></div><b>Próximamente</b></article>
+            <article><span className="organize-icon">□</span><div><strong>Proyectos</strong><small>Organiza canciones y samples por beat</small></div><b>Próximamente</b></article>
+          </div>
+          <details className="evaluation-panel organize-evaluation"><summary><span>Calidad del análisis</span><span>{evaluation.reviewed} revisados · {evaluation.pending} pendientes</span></summary><div className="evaluation-content"><div className="evaluation-metrics"><article><span>BPM ±1</span><strong>{evaluation.bpmAccuracy}%</strong></article><article><span>Tónica</span><strong>{evaluation.tonicAccuracy}%</strong></article><article><span>Mayor / menor</span><strong>{evaluation.modeAccuracy}%</strong></article><article><span>Tonalidad completa</span><strong>{evaluation.fullKeyAccuracy}%</strong></article></div></div></details>
+        </section>}
       </section>
 
       <footer>Usa DISCO únicamente con contenido propio, autorizado o permitido por su licencia.</footer>
-    </main>
+      </main>
+    </div>
   )
 }
 

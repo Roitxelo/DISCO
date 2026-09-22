@@ -11,6 +11,7 @@ import { generateWaveform } from './services/waveform'
 import { exportSample } from './services/sampleExport'
 import {
   listHistory,
+  addHistorySample,
   removeHistoryEntry,
   saveHistoryEntry,
   updateHistoryAnalysis
@@ -269,6 +270,13 @@ app.whenReady().then(() => {
         request.format,
         request.normalizePeak === true
       )
+      await addHistorySample(request.historyId, {
+        filePath: selected.filePath,
+        format: request.format,
+        startSeconds: request.startSeconds,
+        endSeconds: request.endSeconds,
+        normalizePeak: request.normalizePeak === true
+      })
       return { ok: true, filePath: selected.filePath }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo exportar el sample.'

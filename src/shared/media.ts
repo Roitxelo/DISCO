@@ -46,11 +46,25 @@ export type HistoryEntry = {
   detectedAnalysis: AudioAnalysis | null
   analysisReview: 'pending' | 'confirmed' | 'corrected'
   reviewedAt: string | null
+  audioFiles: Array<{
+    format: AudioFormat
+    filePath: string
+    createdAt: string
+  }>
+  samples: Array<{
+    id: string
+    filePath: string
+    format: SampleFormat
+    startSeconds: number
+    endSeconds: number
+    normalizePeak: boolean
+    createdAt: string
+  }>
 }
 
 export type HistorySaveRequest = Omit<
   HistoryEntry,
-  'id' | 'createdAt' | 'detectedAnalysis' | 'analysisReview' | 'reviewedAt'
+  'id' | 'createdAt' | 'detectedAnalysis' | 'analysisReview' | 'reviewedAt' | 'audioFiles' | 'samples'
 >
 
 export type HistoryAnalysisUpdate = {

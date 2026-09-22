@@ -19,7 +19,9 @@ async function readHistory(): Promise<HistoryEntry[]> {
       ...entry,
       detectedAnalysis: entry.detectedAnalysis ?? entry.analysis,
       analysisReview: entry.analysisReview ?? 'pending',
-      reviewedAt: entry.reviewedAt ?? null
+      reviewedAt: entry.reviewedAt ?? null,
+      audioFiles: entry.audioFiles ?? [{ format: entry.format, filePath: entry.filePath, createdAt: entry.createdAt }],
+      samples: entry.samples ?? []
     }))
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
@@ -41,17 +43,49 @@ export async function listHistory(): Promise<HistoryEntry[]> {
 
 export async function saveHistoryEntry(request: HistorySaveRequest): Promise<HistoryEntry[]> {
   const entries = await readHistory()
+  const existing = entries.find((entry) => entry.media.id === request.media.id)
+  if (existing) {
+    const withoutSameFormat = existing.audioFiles.filter((file) => file.format !== request.format)
+    const updatedEntry: HistoryEntry = {
+      ...existing,
+      media: request.media,
+      format: request.format,
+      filePath: request.filePath,
+      analysis: existing.analysis ?? request.analysis,
+      detectedAnalysis: existing.detectedAnalysis ?? request.analysis,
+      audioFiles: [
+        ...withoutSameFormat,
+        { format: request.format, filePath: request.filePath, createdAt: new Date().toISOString() }
+      ]
+    }
+    const updated = [updatedEntry, ...entries.filter((entry) => entry.id !== existing.id)].slice(0, MAX_ENTRIES)
+    await writeHistory(updated)
+    return updated
+  }
   const entry: HistoryEntry = {
     ...request,
     id: randomUUID(),
     createdAt: new Date().toISOString(),
     detectedAnalysis: request.analysis,
     analysisReview: 'pending',
-    reviewedAt: null
+    reviewedAt: null,
+    audioFiles: [{ format: request.format, filePath: request.filePath, createdAt: new Date().toISOString() }],
+    samples: []
   }
   const updated = [entry, ...entries].slice(0, MAX_ENTRIES)
   await writeHistory(updated)
   return updated
+}
+
+export async function addHistorySample(
+  id: string,
+  sample: Omit<HistoryEntry['samples'][number], 'id' | 'createdAt'>
+): Promise<void> {
+  const entries = await readHistory()
+  const updated = entries.map((entry) => entry.id === id
+    ? { ...entry, samples: [...entry.samples, { ...sample, id: randomUUID(), createdAt: new Date().toISOString() }] }
+    : entry)
+  await writeHistory(updated)
 }
 
 export async function removeHistoryEntry(id: string): Promise<HistoryEntry[]> {
