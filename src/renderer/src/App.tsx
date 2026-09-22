@@ -11,6 +11,8 @@ import { SettingsView } from './views/SettingsView'
 import type { AppSettings } from './views/SettingsView'
 import { OrganizeView } from './views/OrganizeView'
 import { WaveformEditor } from './components/WaveformEditor'
+import { CollectionToolbar } from './components/CollectionToolbar'
+import type { CollectionSort } from './components/CollectionToolbar'
 
 const SETTINGS_KEY = 'disco:settings:v1'
 const DEFAULT_SETTINGS: AppSettings = {
@@ -125,6 +127,8 @@ function App(): React.JSX.Element {
   const [organizeFavoritesOnly, setOrganizeFavoritesOnly] = useState(false)
   const [organizeStatus, setOrganizeStatus] = useState<ProjectStatus | 'all'>('all')
   const [organizeTag, setOrganizeTag] = useState('all')
+  const [collectionSearch, setCollectionSearch] = useState('')
+  const [collectionSort, setCollectionSort] = useState<CollectionSort>('recent')
   const [tagDrafts, setTagDrafts] = useState<Record<string, string>>({})
   const [availableAudioFiles, setAvailableAudioFiles] = useState<Record<string, boolean>>({})
   const [availableSamples, setAvailableSamples] = useState<Record<string, boolean>>({})
@@ -149,6 +153,17 @@ function App(): React.JSX.Element {
     () => [...new Set(collectionEntries.flatMap((entry) => entry.tags))].sort((a, b) => a.localeCompare(b, 'es')),
     [collectionEntries]
   )
+  const filteredCollectionEntries = useMemo(() => {
+    const search = collectionSearch.trim().toLocaleLowerCase('es')
+    return [...collectionEntries]
+      .filter((entry) => !search || `${entry.media.title} ${entry.media.channel}`.toLocaleLowerCase('es').includes(search))
+      .sort((left, right) => {
+        if (collectionSort === 'title') return left.media.title.localeCompare(right.media.title, 'es')
+        if (collectionSort === 'bpm') return (left.analysis?.bpm ?? Number.MAX_SAFE_INTEGER) - (right.analysis?.bpm ?? Number.MAX_SAFE_INTEGER)
+        if (collectionSort === 'key') return (left.analysis?.camelot ?? 'ZZ').localeCompare(right.analysis?.camelot ?? 'ZZ', 'es')
+        return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      })
+  }, [collectionEntries, collectionSearch, collectionSort])
   const organizedEntries = useMemo(() => {
     const search = organizeSearch.trim().toLocaleLowerCase('es')
     return collectionEntries.filter((entry) => {
@@ -922,8 +937,10 @@ function App(): React.JSX.Element {
 
   const visibleEntries = view === 'identify'
     ? pendingEntries
-    : view === 'collection' || view === 'sample'
-      ? collectionEntries
+    : view === 'collection'
+      ? filteredCollectionEntries
+      : view === 'sample'
+        ? collectionEntries
       : history.slice(0, 3)
   const displayedEntries = view === 'sample' && activeEntry ? [activeEntry] : visibleEntries
 
@@ -981,6 +998,7 @@ function App(): React.JSX.Element {
               ? <button className="change-song" type="button" onClick={closeSampler}>Cambiar canción</button>
               : <span>{visibleEntries.length} {visibleEntries.length === 1 ? 'canción' : 'canciones'}</span>}
           </div>
+          {view === 'collection' && <CollectionToolbar search={collectionSearch} sort={collectionSort} onSearchChange={setCollectionSearch} onSortChange={setCollectionSort} />}
           {view === 'identify' && <details className="evaluation-panel">
             <summary>
               <span>Calidad del análisis</span>
