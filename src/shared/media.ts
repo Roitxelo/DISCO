@@ -46,6 +46,63 @@ export type AudioAnalysis = {
     camelot: string
   }>
   algorithmVersion?: number
+  diagnostics?: AnalysisDiagnostics
+}
+
+export type BpmCandidateDiagnostic = {
+  bpm: number
+  periodicity: number
+  beatFit: number
+  segmentAgreement: number
+  familySupport: number
+  finalScore: number
+}
+
+export type KeyCandidateDiagnostic = {
+  key: string
+  mode: 'major' | 'minor'
+  globalScore: number
+  segmentVotes: number
+  tonicEvidence: number
+  triadEvidence: number
+  finalScore: number
+}
+
+export type AnalysisDiagnostics = {
+  analyzedSeconds: number
+  tuningCents: number
+  bpmCandidates: BpmCandidateDiagnostic[]
+  keyCandidates: KeyCandidateDiagnostic[]
+}
+
+export type AnalysisComparisonCase = {
+  historyId: string
+  title: string
+  reference: AudioAnalysis
+  v2: AudioAnalysis
+  v3: AudioAnalysis
+}
+
+export type AnalysisComparisonSummary = {
+  reviewed: number
+  bpmV2Hits: number
+  bpmV3Hits: number
+  keyV2Hits: number
+  keyV3Hits: number
+  bpmV2CandidateHits: number
+  bpmV3CandidateHits: number
+  keyV2CandidateHits: number
+  keyV3CandidateHits: number
+}
+
+export type AnalysisComparisonResult =
+  | { ok: true; cases: AnalysisComparisonCase[]; summary: AnalysisComparisonSummary }
+  | { ok: false; error: string }
+
+export type AnalysisComparisonProgress = {
+  completed: number
+  total: number
+  title: string
 }
 
 export type AudioAnalysisResult =

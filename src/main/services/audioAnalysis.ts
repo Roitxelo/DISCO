@@ -4,7 +4,8 @@ import Meyda from 'meyda'
 import { getFfmpegPath } from './ytDlp'
 import type { AudioAnalysis } from '../../shared/media'
 
-const SAMPLE_RATE = 22_050
+export const ANALYSIS_SAMPLE_RATE = 22_050
+const SAMPLE_RATE = ANALYSIS_SAMPLE_RATE
 const FRAME_SIZE = 4_096
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 const MAJOR_PROFILE = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
@@ -12,7 +13,7 @@ const MINOR_PROFILE = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69
 const CAMELOT_MAJOR = ['8B', '3B', '10B', '5B', '12B', '7B', '2B', '9B', '4B', '11B', '6B', '1B']
 const CAMELOT_MINOR = ['5A', '12A', '7A', '2A', '9A', '4A', '11A', '6A', '1A', '8A', '3A', '10A']
 
-function decodeAudio(filePath: string): Promise<Float32Array> {
+export function decodeAudio(filePath: string): Promise<Float32Array> {
   return new Promise((resolve, reject) => {
     execFile(
       getFfmpegPath(),
@@ -197,7 +198,7 @@ function estimateKey(samples: Float32Array): Pick<AudioAnalysis, 'key' | 'mode' 
   }
 }
 
-export async function analyzeAudio(filePath: string): Promise<AudioAnalysis> {
+export async function analyzeAudioV2(filePath: string): Promise<AudioAnalysis> {
   const fileInfo = await stat(filePath).catch(() => null)
   if (!fileInfo?.isFile()) throw new Error('No se encontró el archivo que quieres analizar.')
 
@@ -210,3 +211,5 @@ export async function analyzeAudio(filePath: string): Promise<AudioAnalysis> {
     algorithmVersion: 2
   }
 }
+
+export const analyzeAudio = analyzeAudioV2
