@@ -103,20 +103,51 @@ function createOnsetEnvelope(samples: Float32Array): { envelope: number[]; rate:
   return { envelope: normalizeEnvelope(raw), rate: ANALYSIS_SAMPLE_RATE / hopSize }
 }
 
-function beatGridFit(envelope: number[], period: number): number {
+function percentile(values: number[], position: number): number {
+  if (!values.length) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.floor(position * (sorted.length - 1))))]
+}
+
+function beatGridFit(envelope: number[], period: number): { fit: number; coverage: number } {
   const roundedPeriod = Math.max(2, Math.round(period))
-  let best = 0
-  const total = envelope.reduce((sum, value) => sum + value, 0) + 1e-9
+  const onsetThreshold = Math.max(percentile(envelope.filter((value) => value > 0), 0.65), 1e-9)
+  const significantMass = envelope.reduce((sum, value) => sum + (value >= onsetThreshold ? value : 0), 0) + 1e-9
+  let bestFit = 0
+  let bestCoverage = 0
   for (let phase = 0; phase < roundedPeriod; phase += 1) {
-    let score = 0
+    let capturedMass = 0
+    let occupied = 0
+    let peakStrength = 0
     let beats = 0
     for (let index = phase; index < envelope.length; index += roundedPeriod) {
-      score += envelope[index] + (envelope[index - 1] ?? 0) * 0.55 + (envelope[index + 1] ?? 0) * 0.55
+      const localPeak = Math.max(envelope[index - 1] ?? 0, envelope[index] ?? 0, envelope[index + 1] ?? 0)
+      peakStrength += clamp(localPeak / (onsetThreshold * 2.5))
+      if (localPeak >= onsetThreshold) {
+        occupied += 1
+        capturedMass += localPeak
+      }
       beats += 1
     }
-    best = Math.max(best, score / Math.max(1, beats))
+    const precision = peakStrength / Math.max(1, beats)
+    const occupancy = occupied / Math.max(1, beats)
+    const coverage = clamp(capturedMass / significantMass)
+    // Precision alone favors sparse half-time grids. Coverage and occupancy make
+    // the winning level explain a useful share of the song's actual attacks.
+    const fit = clamp(precision * 0.34 + occupancy * 0.26 + coverage * 0.4)
+    if (fit > bestFit) {
+      bestFit = fit
+      bestCoverage = coverage
+    }
   }
-  return clamp(best / Math.max(total / envelope.length, 1e-9) / 3)
+  return { fit: bestFit, coverage: bestCoverage }
+}
+
+function pulseSalience(bpm: number): number {
+  // A deliberately broad perceptual prior used only as one vote. It separates
+  // near-tied metrical relatives without forcing every genre into a narrow range.
+  const octavesFromCenter = Math.log2(bpm / 108)
+  return Math.exp(-0.5 * (octavesFromCenter / 0.6) ** 2)
 }
 
 function segmentAgreement(envelope: number[], lag: number, rate: number): number {
@@ -162,15 +193,18 @@ function estimateBpmV3(samples: Float32Array): Pick<AudioAnalysis, 'bpm' | 'bpmC
     const relatedRatios = [0.5, 2, 2 / 3, 1.5, 0.75, 4 / 3]
     const related = unique.filter((other) => relatedRatios.some((ratio) => Math.abs(other.bpm - candidate.bpm * ratio) < 2))
     const familySupport = clamp(candidate.periodicity + related.reduce((sum, item) => sum + item.periodicity, 0) * 0.22)
-    const beatFit = beatGridFit(envelope, candidate.lag)
+    const grid = beatGridFit(envelope, candidate.lag)
     const agreement = segmentAgreement(envelope, Math.round(candidate.lag), rate)
-    const finalScore = candidate.periodicity * 0.34 + beatFit * 0.29 + agreement * 0.27 + familySupport * 0.1
+    const salience = pulseSalience(candidate.bpm)
+    const finalScore = candidate.periodicity * 0.28 + grid.fit * 0.26 + agreement * 0.2 + familySupport * 0.14 + salience * 0.12
     return {
       bpm: candidate.bpm,
       periodicity: candidate.periodicity,
-      beatFit,
+      beatFit: grid.fit,
+      gridCoverage: grid.coverage,
       segmentAgreement: agreement,
       familySupport,
+      pulseSalience: salience,
       finalScore
     }
   }).sort((a, b) => b.finalScore - a.finalScore)
@@ -303,8 +337,18 @@ function estimateKeyV3(samples: Float32Array): Pick<AudioAnalysis, 'key' | 'mode
       const fifth = (tonic + 7) % 12
       const oppositeThird = mode === 'major' ? (tonic + 3) % 12 : (tonic + 4) % 12
       const triadEvidence = clamp((accumulated[tonic] + accumulated[third] + accumulated[fifth] - accumulated[oppositeThird] * 0.35) * 2.3)
+      const modeEvidence = clamp(0.5 + (accumulated[third] - accumulated[oppositeThird]) * 4)
+      const oppositeProfiles = mode === 'major'
+        ? [KRUMHANSL_MINOR, TEMPERLEY_MINOR]
+        : [KRUMHANSL_MAJOR, TEMPERLEY_MAJOR]
+      const modeAgreement = segments.length
+        ? segments.filter((segment) => (
+          mean(profiles.map((profile) => pearson(segment, profile, tonic))) >=
+          mean(oppositeProfiles.map((profile) => pearson(segment, profile, tonic)))
+        )).length / segments.length
+        : 0
       const temporalScore = mean(segmentScores)
-      const finalScore = globalScore * 0.48 + temporalScore * 0.24 + segmentVotes * 0.12 + tonicEvidence * 0.1 + triadEvidence * 0.06
+      const finalScore = globalScore * 0.38 + temporalScore * 0.2 + segmentVotes * 0.08 + tonicEvidence * 0.1 + triadEvidence * 0.08 + modeAgreement * 0.08 + modeEvidence * 0.08
       candidates.push({
         key: NOTE_NAMES[tonic],
         mode,
@@ -312,6 +356,8 @@ function estimateKeyV3(samples: Float32Array): Pick<AudioAnalysis, 'key' | 'mode
         segmentVotes,
         tonicEvidence,
         triadEvidence,
+        modeAgreement,
+        modeEvidence,
         finalScore
       })
     }
@@ -320,7 +366,7 @@ function estimateKeyV3(samples: Float32Array): Pick<AudioAnalysis, 'key' | 'mode
   const best = candidates[0]
   const second = candidates[1]
   const margin = clamp((best.finalScore - second.finalScore) / 0.18)
-  const confidence = Math.round(100 * clamp(margin * 0.5 + best.segmentVotes * 0.3 + clamp(best.globalScore) * 0.2))
+  const confidence = Math.round(100 * clamp(margin * 0.5 + best.segmentVotes * 0.2 + (best.modeAgreement ?? 0) * 0.15 + clamp(best.globalScore) * 0.15))
   const bestTonic = NOTE_NAMES.indexOf(best.key)
   return {
     key: best.key,
@@ -356,7 +402,7 @@ export async function analyzeAudioV3(filePath: string): Promise<AudioAnalysis> {
     camelot: key.camelot,
     keyConfidence: key.keyConfidence,
     keyAlternatives: key.keyAlternatives,
-    algorithmVersion: 3,
+    algorithmVersion: 3.1,
     diagnostics: {
       analyzedSeconds: Math.round((samples.length / ANALYSIS_SAMPLE_RATE) * 10) / 10,
       tuningCents: key.tuningCents,
