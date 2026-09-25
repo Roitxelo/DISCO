@@ -29,6 +29,12 @@ type IdentifyViewProps = {
 
 export function IdentifyView(props: IdentifyViewProps): React.JSX.Element {
   const { media, analysis } = props
+  const hasParallelKeyAlternative = Boolean(analysis?.keyAlternatives?.some(
+    (candidate) => candidate.key === analysis.key && candidate.mode !== analysis.mode
+  ))
+  const needsReview = Boolean(analysis && (
+    (analysis.bpmConfidence ?? 100) < 35 || analysis.keyConfidence < 45 || hasParallelKeyAlternative
+  ))
   return <article className="media-card identify-card">
     {media.thumbnailUrl ? <img src={media.thumbnailUrl} alt="" /> : <div className="media-placeholder" />}
     <div className="media-copy">
@@ -40,7 +46,7 @@ export function IdentifyView(props: IdentifyViewProps): React.JSX.Element {
       {props.analysisError && <p className="error" role="alert">{props.analysisError}</p>}
 
       {analysis && <section className="analysis-results" aria-label="Análisis musical estimado">
-        <div className="analysis-heading"><span>Motor v{analysis.algorithmVersion ?? 1}</span><small>Confianza · BPM {analysis.bpmConfidence ?? '—'}% · tono {analysis.keyConfidence}%</small></div>
+        <div className="analysis-heading"><span>Motor v{analysis.algorithmVersion ?? 1}</span><small>{needsReview ? 'Revisión recomendada' : 'Confianza'} · BPM {analysis.bpmConfidence ?? '—'}% · tono {analysis.keyConfidence}%</small></div>
         <div className="analysis-values">
           <article><span>BPM</span>{props.editing ? <>
             <input className="analysis-input" type="number" min="20" max="300" step="0.1" value={props.bpm} aria-label="BPM corregido" onChange={(event) => props.onBpmChange(Number(event.target.value))} />
@@ -52,7 +58,7 @@ export function IdentifyView(props: IdentifyViewProps): React.JSX.Element {
           </div> : <strong>{analysis.key} {analysis.mode === 'major' ? 'mayor' : 'menor'}</strong>}<small>{props.editing ? props.selectedCamelot : analysis.camelot} · Camelot</small></article>
         </div>
 
-        {((analysis.bpmAlternatives?.length ?? 0) > 0 || (analysis.keyAlternatives?.length ?? 0) > 0) && <details className="analysis-alternatives"><summary>Ver alternativas</summary><div>
+        {((analysis.bpmAlternatives?.length ?? 0) > 0 || (analysis.keyAlternatives?.length ?? 0) > 0) && <details className="analysis-alternatives"><summary>{needsReview ? 'Revisar alternativas' : 'Ver alternativas'}</summary><div>
           {(analysis.bpmAlternatives?.length ?? 0) > 0 && <section><span>BPM posibles</span><div>{analysis.bpmAlternatives!.map((candidate) => <button type="button" key={candidate} onClick={() => { props.onBpmChange(candidate); props.onEditingChange(true) }}>{candidate.toFixed(1)}</button>)}</div></section>}
           {(analysis.keyAlternatives?.length ?? 0) > 0 && <section><span>Tonos posibles</span><div>{analysis.keyAlternatives!.map((candidate) => <button type="button" key={`${candidate.key}-${candidate.mode}`} onClick={() => { props.onKeyChange(candidate.key); props.onModeChange(candidate.mode); props.onEditingChange(true) }}>{candidate.key} {candidate.mode === 'major' ? 'mayor' : 'menor'} · {candidate.camelot}</button>)}</div></section>}
         </div></details>}
