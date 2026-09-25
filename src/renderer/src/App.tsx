@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react'
 import { SAMPLE_FORMATS } from '../../shared/media'
-import type { AudioAnalysis, AudioFormat, DownloadProgress, HistoryEntry, MediaInfo, ProjectStatus, SampleFormat } from '../../shared/media'
+import type { AnalysisComparisonProgress, AnalysisComparisonSummary, AudioAnalysis, AudioFormat, DownloadProgress, HistoryEntry, MediaInfo, ProjectStatus, SampleFormat } from '../../shared/media'
 import { evaluateAnalysis } from './analysisEvaluation'
 import { Sidebar, Topbar } from './components/AppChrome'
 import type { AppView } from './components/AppChrome'
@@ -91,6 +91,10 @@ function App(): React.JSX.Element {
   const [correctionSaved, setCorrectionSaved] = useState(false)
   const [editingAnalysis, setEditingAnalysis] = useState(false)
   const [analysisReview, setAnalysisReview] = useState<'pending' | 'confirmed' | 'corrected'>('pending')
+  const [comparisonRunning, setComparisonRunning] = useState(false)
+  const [comparisonProgress, setComparisonProgress] = useState<AnalysisComparisonProgress | null>(null)
+  const [comparisonSummary, setComparisonSummary] = useState<AnalysisComparisonSummary | null>(null)
+  const [comparisonError, setComparisonError] = useState('')
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [historyError, setHistoryError] = useState('')
   const [playingEntryId, setPlayingEntryId] = useState('')
@@ -184,6 +188,8 @@ function App(): React.JSX.Element {
   }, [])
 
   useEffect(() => window.disco.onDownloadProgress(setDownloadProgress), [])
+
+  useEffect(() => window.disco.onAnalysisComparisonProgress(setComparisonProgress), [])
 
   useEffect(() => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
@@ -910,6 +916,17 @@ function App(): React.JSX.Element {
     setSavingCorrection(false)
   }
 
+  async function runAnalysisComparison(): Promise<void> {
+    setComparisonRunning(true)
+    setComparisonError('')
+    setComparisonSummary(null)
+    setComparisonProgress({ completed: 0, total: 0, title: 'Preparando banco de prueba' })
+    const result = await window.disco.compareAnalysisV3()
+    if (result.ok) setComparisonSummary(result.summary)
+    else setComparisonError(result.error)
+    setComparisonRunning(false)
+  }
+
   async function confirmAnalysis(): Promise<void> {
     if (!analysis || !downloadedFile) return
     setSavingCorrection(true)
@@ -1242,7 +1259,7 @@ function App(): React.JSX.Element {
           )}
         </section>}
 
-        {view === 'settings' && <SettingsView settings={settings} directory={directory} version={window.disco.version} onChange={setSettings} onSelectFolder={() => void selectFolder()} onDownloadFormatChange={(value) => { setSettings((current) => ({ ...current, downloadFormat: value })); setFormat(value) }} />}
+        {view === 'settings' && <SettingsView settings={settings} directory={directory} version={window.disco.version} comparisonRunning={comparisonRunning} comparisonProgress={comparisonProgress} comparisonSummary={comparisonSummary} comparisonError={comparisonError} onRunComparison={() => void runAnalysisComparison()} onChange={setSettings} onSelectFolder={() => void selectFolder()} onDownloadFormatChange={(value) => { setSettings((current) => ({ ...current, downloadFormat: value })); setFormat(value) }} />}
 
         {view === 'organize' && <OrganizeView entries={collectionEntries} visibleEntries={organizedEntries} availableTags={availableTags} search={organizeSearch} favoritesOnly={organizeFavoritesOnly} status={organizeStatus} tag={organizeTag} tagDrafts={tagDrafts} error={historyError} onSearchChange={setOrganizeSearch} onFavoritesChange={setOrganizeFavoritesOnly} onStatusChange={setOrganizeStatus} onTagChange={setOrganizeTag} onTagDraftChange={(id, value) => setTagDrafts((current) => ({ ...current, [id]: value }))} onClear={() => { setOrganizeSearch(''); setOrganizeFavoritesOnly(false); setOrganizeStatus('all'); setOrganizeTag('all') }} onUpdate={(id, update) => void updateOrganization(id, update)} onRemoveTag={(entry, tag) => void removeTag(entry, tag)} onAddTag={(entry, event) => { event.preventDefault(); void addTag(entry) }} />}
       </section>

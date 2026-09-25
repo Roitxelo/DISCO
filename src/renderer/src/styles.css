@@ -426,6 +426,13 @@ footer { padding: 20px 42px; color: #65646a; border-top: 1px solid #242428; font
 .settings-row button:hover { border-color: #53545e; background: #2a2b32; }
 .settings-row input[type='checkbox'] { width: 17px; height: 17px; flex: 0 0 auto; accent-color: var(--accent); }
 .app-version code { color: #aaa8ae; font-family: ui-monospace, "Cascadia Code", monospace; font-size: 11px; }
+.analysis-comparison-row button:disabled { cursor: wait; opacity: .6; }
+.comparison-progress { padding: 0 20px 16px; }
+.comparison-progress progress { width: 100%; height: 7px; accent-color: var(--accent); }
+.comparison-error { margin: 0; padding: 12px 20px; color: #ff9a7c; border-top: 1px solid #3b2926; background: #1b1211; }
+.comparison-results { display: grid; gap: 1px; padding: 1px 0 0; background: #24252b; }
+.comparison-results > div { display: grid; grid-template-columns: minmax(0, 1fr) 90px 90px; gap: 10px; padding: 12px 20px; background: var(--surface-1); color: #aaa8ae; font-size: 11px; }
+.comparison-results strong { color: #e7e2dd; font-variant-numeric: tabular-nums; }
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { scroll-behavior: auto !important; transition-duration: .001ms !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
 
 .library { margin-top: 0; padding-top: 0; border-top: 0; }

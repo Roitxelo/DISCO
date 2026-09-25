@@ -1,5 +1,5 @@
 import { AUDIO_FORMATS, SAMPLE_FORMATS } from '../../../shared/media'
-import type { AudioFormat, SampleFormat } from '../../../shared/media'
+import type { AnalysisComparisonProgress, AnalysisComparisonSummary, AudioFormat, SampleFormat } from '../../../shared/media'
 
 export type AppSettings = {
   directory: string
@@ -15,12 +15,17 @@ type SettingsViewProps = {
   settings: AppSettings
   directory: string
   version: string
+  comparisonRunning: boolean
+  comparisonProgress: AnalysisComparisonProgress | null
+  comparisonSummary: AnalysisComparisonSummary | null
+  comparisonError: string
+  onRunComparison: () => void
   onChange: (settings: AppSettings) => void
   onSelectFolder: () => void
   onDownloadFormatChange: (format: AudioFormat) => void
 }
 
-export function SettingsView({ settings, directory, version, onChange, onSelectFolder, onDownloadFormatChange }: SettingsViewProps): React.JSX.Element {
+export function SettingsView({ settings, directory, version, comparisonRunning, comparisonProgress, comparisonSummary, comparisonError, onRunComparison, onChange, onSelectFolder, onDownloadFormatChange }: SettingsViewProps): React.JSX.Element {
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => onChange({ ...settings, [key]: value })
   return <section className="settings-view">
     <div className="settings-intro"><p className="eyebrow">AJUSTES</p><h1>Tu flujo, a tu manera.</h1><p className="intro">DISCO recordará estas preferencias la próxima vez que lo abras.</p></div>
@@ -41,6 +46,21 @@ export function SettingsView({ settings, directory, version, onChange, onSelectF
         <div><span className="settings-icon" aria-hidden="true">Aa</span><div><h2 id="interface-settings-title">Interfaz</h2><p>Comportamiento visual y accesibilidad.</p></div></div>
         <label className="settings-row toggle-row"><span><strong>Reducir animaciones</strong><small>Desactiva transiciones y movimientos decorativos.</small></span><input type="checkbox" checked={settings.reduceMotion} onChange={(event) => update('reduceMotion', event.target.checked)} /></label>
         <div className="settings-row app-version"><span><strong>Versión de DISCO</strong><small>Aplicación de escritorio</small></span><code>v{version}</code></div>
+      </section>
+      <section className="settings-group" aria-labelledby="analysis-test-title">
+        <div><span className="settings-icon" aria-hidden="true">V3</span><div><h2 id="analysis-test-title">Banco de análisis</h2><p>Compara v2 y v3 sin modificar tus correcciones ni el historial.</p></div></div>
+        <div className="settings-row analysis-comparison-row">
+          <span><strong>Comparar canciones revisadas</strong><small>{comparisonRunning && comparisonProgress ? `${comparisonProgress.completed}/${comparisonProgress.total || '—'} · ${comparisonProgress.title}` : 'Procesa de nuevo los archivos locales y conserva v2 como referencia.'}</small></span>
+          <button type="button" disabled={comparisonRunning} onClick={onRunComparison}>{comparisonRunning ? 'Analizando…' : 'Ejecutar prueba'}</button>
+        </div>
+        {comparisonRunning && <div className="comparison-progress" role="status" aria-live="polite"><progress max={Math.max(1, comparisonProgress?.total ?? 1)} value={comparisonProgress?.completed ?? 0} /></div>}
+        {comparisonError && <p className="comparison-error" role="alert">{comparisonError}</p>}
+        {comparisonSummary && <div className="comparison-results" role="status">
+          <div><span>BPM principal</span><strong>v2 {comparisonSummary.bpmV2Hits}/{comparisonSummary.reviewed}</strong><strong>v3 {comparisonSummary.bpmV3Hits}/{comparisonSummary.reviewed}</strong></div>
+          <div><span>BPM con alternativas</span><strong>v2 {comparisonSummary.bpmV2CandidateHits}/{comparisonSummary.reviewed}</strong><strong>v3 {comparisonSummary.bpmV3CandidateHits}/{comparisonSummary.reviewed}</strong></div>
+          <div><span>Tonalidad principal</span><strong>v2 {comparisonSummary.keyV2Hits}/{comparisonSummary.reviewed}</strong><strong>v3 {comparisonSummary.keyV3Hits}/{comparisonSummary.reviewed}</strong></div>
+          <div><span>Tono con alternativas</span><strong>v2 {comparisonSummary.keyV2CandidateHits}/{comparisonSummary.reviewed}</strong><strong>v3 {comparisonSummary.keyV3CandidateHits}/{comparisonSummary.reviewed}</strong></div>
+        </div>}
       </section>
     </div>
   </section>
