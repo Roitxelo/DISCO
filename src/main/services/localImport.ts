@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process'
 import { basename, extname, resolve } from 'node:path'
 import { stat } from 'node:fs/promises'
 import { AUDIO_FORMATS } from '../../shared/media'
-import { analyzeAudio } from './audioAnalysis'
+import { analyzeAudioV3 } from './audioAnalysisV3'
 import { getFfmpegPath } from './ytDlp'
 import { listHistory, saveHistoryEntry } from './history'
 import type { AudioFormat, LocalImportProgress } from '../../shared/media'
@@ -41,7 +41,7 @@ export async function importLocalAudio(
       const info = await stat(filePath)
       const format = extname(filePath).slice(1).toLowerCase() as AudioFormat
       if (!info.isFile() || !AUDIO_FORMATS.includes(format)) throw new Error('Formato no compatible.')
-      const [analysis, durationSeconds] = await Promise.all([analyzeAudio(filePath), probeDuration(filePath)])
+      const [analysis, durationSeconds] = await Promise.all([analyzeAudioV3(filePath), probeDuration(filePath)])
       const mediaId = localMediaId(filePath)
       await saveHistoryEntry({
         media: {
