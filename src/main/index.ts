@@ -7,7 +7,7 @@ import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../shared/media'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
-import { analyzeAudio } from './services/audioAnalysis'
+import { analyzeAudioV3 } from './services/audioAnalysisV3'
 import { compareReviewedHistory } from './services/analysisComparison'
 import { importLocalAudio } from './services/localImport'
 import { generateWaveform } from './services/waveform'
@@ -209,7 +209,7 @@ app.whenReady().then(() => {
   ipcMain.handle('audio:analyze', async (_event, filePath: unknown): Promise<AudioAnalysisResult> => {
     if (typeof filePath !== 'string') return { ok: false, error: 'El archivo recibido no es válido.' }
     try {
-      return { ok: true, analysis: await analyzeAudio(filePath) }
+      return { ok: true, analysis: await analyzeAudioV3(filePath) }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo analizar el audio.'
       return { ok: false, error: message }
