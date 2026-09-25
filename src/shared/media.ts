@@ -53,8 +53,10 @@ export type BpmCandidateDiagnostic = {
   bpm: number
   periodicity: number
   beatFit: number
+  gridCoverage?: number
   segmentAgreement: number
   familySupport: number
+  pulseSalience?: number
   finalScore: number
 }
 
@@ -65,6 +67,8 @@ export type KeyCandidateDiagnostic = {
   segmentVotes: number
   tonicEvidence: number
   triadEvidence: number
+  modeAgreement?: number
+  modeEvidence?: number
   finalScore: number
 }
 
