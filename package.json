@@ -1,6 +1,6 @@
 {
   "name": "disco",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "private": true,
   "description": "Download, Identify, Sample, Convert, Organize.",
   "main": "./out/main/index.js",
@@ -12,7 +12,9 @@
     "check": "npm run build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "dist:mac": "npm run build && electron-builder --mac dmg"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
@@ -36,8 +38,9 @@
     "vite": "^7.1.4"
   },
   "build": {
-    "appId": "dev.roitxelo.disco",
+    "appId": "com.roitxelo.disco",
     "productName": "DISCO",
+    "artifactName": "DISCO-${version}-${os}-${arch}.${ext}",
     "directories": {
       "buildResources": "build",
       "output": "dist"
@@ -49,7 +52,21 @@
       "node_modules/ffmpeg-static/**/*"
     ],
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DISCO",
+      "deleteAppDataOnUninstall": false
     },
     "mac": {
       "target": "dmg",
