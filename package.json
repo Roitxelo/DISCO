@@ -52,6 +52,7 @@
       "node_modules/ffmpeg-static/**/*"
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -69,6 +70,7 @@
       "deleteAppDataOnUninstall": false
     },
     "mac": {
+      "icon": "build/icon.png",
       "target": "dmg",
       "category": "public.app-category.music"
     }
