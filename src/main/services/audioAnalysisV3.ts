@@ -366,7 +366,17 @@ function estimateKeyV3(samples: Float32Array): Pick<AudioAnalysis, 'key' | 'mode
   const best = candidates[0]
   const second = candidates[1]
   const margin = clamp((best.finalScore - second.finalScore) / 0.18)
-  const confidence = Math.round(100 * clamp(margin * 0.5 + best.segmentVotes * 0.2 + (best.modeAgreement ?? 0) * 0.15 + clamp(best.globalScore) * 0.15))
+  const parallelIndex = candidates.findIndex((candidate) => candidate.key === best.key && candidate.mode !== best.mode)
+  const parallelPenalty = parallelIndex >= 0 && parallelIndex <= 2
+    ? 0.72
+    : parallelIndex >= 0 && parallelIndex <= 4
+      ? 0.85
+      : 1
+  const rawConfidence = 100 * clamp(margin * 0.5 + best.segmentVotes * 0.2 + (best.modeAgreement ?? 0) * 0.15 + clamp(best.globalScore) * 0.15)
+  // Mode estimation is the least stable part of chroma-only analysis. A nearby
+  // parallel key is explicit evidence of ambiguity, even when one profile wins
+  // by a wide margin, so avoid presenting that result as near-certain.
+  const confidence = Math.round(Math.min(88, rawConfidence * parallelPenalty))
   const bestTonic = NOTE_NAMES.indexOf(best.key)
   return {
     key: best.key,
@@ -402,7 +412,7 @@ export async function analyzeAudioV3(filePath: string): Promise<AudioAnalysis> {
     camelot: key.camelot,
     keyConfidence: key.keyConfidence,
     keyAlternatives: key.keyAlternatives,
-    algorithmVersion: 3.1,
+    algorithmVersion: 3.2,
     diagnostics: {
       analyzedSeconds: Math.round((samples.length / ANALYSIS_SAMPLE_RATE) * 10) / 10,
       tuningCents: key.tuningCents,
