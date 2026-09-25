@@ -6,6 +6,9 @@ dist/
 !.env.example
 *.log
 *.tsbuildinfo
+*.tmp
+coverage/
+analysis-v3-report*.json
 .DS_Store
 Thumbs.db
 .idea/
