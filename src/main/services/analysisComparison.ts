@@ -53,23 +53,35 @@ export async function compareReviewedHistory(
   }
   onProgress?.({ completed: reviewed.length, total: reviewed.length, title: '' })
 
+  const evaluations = cases.map((item) => ({
+    historyId: item.historyId,
+    bpmV2Hit: bpmHit(item.v2.bpm, item.reference.bpm),
+    bpmV3Hit: bpmHit(item.v3.bpm, item.reference.bpm),
+    keyV2Hit: keyHit(item.v2, item.reference),
+    keyV3Hit: keyHit(item.v3, item.reference),
+    bpmV2CandidateHit: bpmCandidateHit(item.v2, item.reference),
+    bpmV3CandidateHit: bpmCandidateHit(item.v3, item.reference),
+    keyV2CandidateHit: keyCandidateHit(item.v2, item.reference),
+    keyV3CandidateHit: keyCandidateHit(item.v3, item.reference)
+  }))
   const summary: AnalysisComparisonSummary = {
     reviewed: cases.length,
-    bpmV2Hits: cases.filter((item) => bpmHit(item.v2.bpm, item.reference.bpm)).length,
-    bpmV3Hits: cases.filter((item) => bpmHit(item.v3.bpm, item.reference.bpm)).length,
-    keyV2Hits: cases.filter((item) => keyHit(item.v2, item.reference)).length,
-    keyV3Hits: cases.filter((item) => keyHit(item.v3, item.reference)).length,
-    bpmV2CandidateHits: cases.filter((item) => bpmCandidateHit(item.v2, item.reference)).length,
-    bpmV3CandidateHits: cases.filter((item) => bpmCandidateHit(item.v3, item.reference)).length,
-    keyV2CandidateHits: cases.filter((item) => keyCandidateHit(item.v2, item.reference)).length,
-    keyV3CandidateHits: cases.filter((item) => keyCandidateHit(item.v3, item.reference)).length
+    bpmV2Hits: evaluations.filter((item) => item.bpmV2Hit).length,
+    bpmV3Hits: evaluations.filter((item) => item.bpmV3Hit).length,
+    keyV2Hits: evaluations.filter((item) => item.keyV2Hit).length,
+    keyV3Hits: evaluations.filter((item) => item.keyV3Hit).length,
+    bpmV2CandidateHits: evaluations.filter((item) => item.bpmV2CandidateHit).length,
+    bpmV3CandidateHits: evaluations.filter((item) => item.bpmV3CandidateHit).length,
+    keyV2CandidateHits: evaluations.filter((item) => item.keyV2CandidateHit).length,
+    keyV3CandidateHits: evaluations.filter((item) => item.keyV3CandidateHit).length
   }
   const reportPath = join(app.getPath('userData'), 'analysis-v3-report.json')
   await writeFile(reportPath, JSON.stringify({
     generatedAt: new Date().toISOString(),
-    algorithmVersion: 3,
+    algorithmVersion: 3.1,
     bpmTolerance: BPM_TOLERANCE,
     summary,
+    evaluations,
     cases
   }, null, 2), 'utf8')
   return { cases, summary, reportPath }
