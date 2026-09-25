@@ -78,7 +78,7 @@ export async function compareReviewedHistory(
   const reportPath = join(app.getPath('userData'), 'analysis-v3-report.json')
   await writeFile(reportPath, JSON.stringify({
     generatedAt: new Date().toISOString(),
-    algorithmVersion: 3.1,
+    algorithmVersion: 3.2,
     bpmTolerance: BPM_TOLERANCE,
     summary,
     evaluations,
