@@ -1,5 +1,8 @@
 import { analyzeAudioV3 } from './audioAnalysisV3'
 import { listHistory } from './history'
+import { writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { app } from 'electron'
 import type {
   AnalysisComparisonCase,
   AnalysisComparisonProgress,
@@ -31,7 +34,7 @@ function keyCandidateHit(analysis: AudioAnalysis, reference: AudioAnalysis): boo
 
 export async function compareReviewedHistory(
   onProgress?: (progress: AnalysisComparisonProgress) => void
-): Promise<{ cases: AnalysisComparisonCase[]; summary: AnalysisComparisonSummary }> {
+): Promise<{ cases: AnalysisComparisonCase[]; summary: AnalysisComparisonSummary; reportPath: string }> {
   const reviewed = (await listHistory()).filter(
     (entry) => entry.analysisReview !== 'pending' && entry.detectedAnalysis && entry.analysis
   )
@@ -61,5 +64,13 @@ export async function compareReviewedHistory(
     keyV2CandidateHits: cases.filter((item) => keyCandidateHit(item.v2, item.reference)).length,
     keyV3CandidateHits: cases.filter((item) => keyCandidateHit(item.v3, item.reference)).length
   }
-  return { cases, summary }
+  const reportPath = join(app.getPath('userData'), 'analysis-v3-report.json')
+  await writeFile(reportPath, JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    algorithmVersion: 3,
+    bpmTolerance: BPM_TOLERANCE,
+    summary,
+    cases
+  }, null, 2), 'utf8')
+  return { cases, summary, reportPath }
 }

@@ -433,6 +433,7 @@ footer { padding: 20px 42px; color: #65646a; border-top: 1px solid #242428; font
 .comparison-results { display: grid; gap: 1px; padding: 1px 0 0; background: #24252b; }
 .comparison-results > div { display: grid; grid-template-columns: minmax(0, 1fr) 90px 90px; gap: 10px; padding: 12px 20px; background: var(--surface-1); color: #aaa8ae; font-size: 11px; }
 .comparison-results strong { color: #e7e2dd; font-variant-numeric: tabular-nums; }
+.comparison-results .comparison-report { min-height: 40px; color: #ffb097; border: 0; border-radius: 0; background: #17171b; }
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { scroll-behavior: auto !important; transition-duration: .001ms !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
 
 .library { margin-top: 0; padding-top: 0; border-top: 0; }

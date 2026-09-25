@@ -94,6 +94,7 @@ function App(): React.JSX.Element {
   const [comparisonRunning, setComparisonRunning] = useState(false)
   const [comparisonProgress, setComparisonProgress] = useState<AnalysisComparisonProgress | null>(null)
   const [comparisonSummary, setComparisonSummary] = useState<AnalysisComparisonSummary | null>(null)
+  const [comparisonReportPath, setComparisonReportPath] = useState('')
   const [comparisonError, setComparisonError] = useState('')
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [historyError, setHistoryError] = useState('')
@@ -920,9 +921,13 @@ function App(): React.JSX.Element {
     setComparisonRunning(true)
     setComparisonError('')
     setComparisonSummary(null)
+    setComparisonReportPath('')
     setComparisonProgress({ completed: 0, total: 0, title: 'Preparando banco de prueba' })
     const result = await window.disco.compareAnalysisV3()
-    if (result.ok) setComparisonSummary(result.summary)
+    if (result.ok) {
+      setComparisonSummary(result.summary)
+      setComparisonReportPath(result.reportPath)
+    }
     else setComparisonError(result.error)
     setComparisonRunning(false)
   }
@@ -1259,7 +1264,7 @@ function App(): React.JSX.Element {
           )}
         </section>}
 
-        {view === 'settings' && <SettingsView settings={settings} directory={directory} version={window.disco.version} comparisonRunning={comparisonRunning} comparisonProgress={comparisonProgress} comparisonSummary={comparisonSummary} comparisonError={comparisonError} onRunComparison={() => void runAnalysisComparison()} onChange={setSettings} onSelectFolder={() => void selectFolder()} onDownloadFormatChange={(value) => { setSettings((current) => ({ ...current, downloadFormat: value })); setFormat(value) }} />}
+        {view === 'settings' && <SettingsView settings={settings} directory={directory} version={window.disco.version} comparisonRunning={comparisonRunning} comparisonProgress={comparisonProgress} comparisonSummary={comparisonSummary} comparisonReportPath={comparisonReportPath} comparisonError={comparisonError} onRunComparison={() => void runAnalysisComparison()} onRevealComparisonReport={() => comparisonReportPath && window.disco.revealFile(comparisonReportPath)} onChange={setSettings} onSelectFolder={() => void selectFolder()} onDownloadFormatChange={(value) => { setSettings((current) => ({ ...current, downloadFormat: value })); setFormat(value) }} />}
 
         {view === 'organize' && <OrganizeView entries={collectionEntries} visibleEntries={organizedEntries} availableTags={availableTags} search={organizeSearch} favoritesOnly={organizeFavoritesOnly} status={organizeStatus} tag={organizeTag} tagDrafts={tagDrafts} error={historyError} onSearchChange={setOrganizeSearch} onFavoritesChange={setOrganizeFavoritesOnly} onStatusChange={setOrganizeStatus} onTagChange={setOrganizeTag} onTagDraftChange={(id, value) => setTagDrafts((current) => ({ ...current, [id]: value }))} onClear={() => { setOrganizeSearch(''); setOrganizeFavoritesOnly(false); setOrganizeStatus('all'); setOrganizeTag('all') }} onUpdate={(id, update) => void updateOrganization(id, update)} onRemoveTag={(entry, tag) => void removeTag(entry, tag)} onAddTag={(entry, event) => { event.preventDefault(); void addTag(entry) }} />}
       </section>

@@ -96,7 +96,7 @@ export type AnalysisComparisonSummary = {
 }
 
 export type AnalysisComparisonResult =
-  | { ok: true; cases: AnalysisComparisonCase[]; summary: AnalysisComparisonSummary }
+  | { ok: true; cases: AnalysisComparisonCase[]; summary: AnalysisComparisonSummary; reportPath: string }
   | { ok: false; error: string }
 
 export type AnalysisComparisonProgress = {

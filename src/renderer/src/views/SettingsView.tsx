@@ -18,14 +18,16 @@ type SettingsViewProps = {
   comparisonRunning: boolean
   comparisonProgress: AnalysisComparisonProgress | null
   comparisonSummary: AnalysisComparisonSummary | null
+  comparisonReportPath: string
   comparisonError: string
   onRunComparison: () => void
+  onRevealComparisonReport: () => void
   onChange: (settings: AppSettings) => void
   onSelectFolder: () => void
   onDownloadFormatChange: (format: AudioFormat) => void
 }
 
-export function SettingsView({ settings, directory, version, comparisonRunning, comparisonProgress, comparisonSummary, comparisonError, onRunComparison, onChange, onSelectFolder, onDownloadFormatChange }: SettingsViewProps): React.JSX.Element {
+export function SettingsView({ settings, directory, version, comparisonRunning, comparisonProgress, comparisonSummary, comparisonReportPath, comparisonError, onRunComparison, onRevealComparisonReport, onChange, onSelectFolder, onDownloadFormatChange }: SettingsViewProps): React.JSX.Element {
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => onChange({ ...settings, [key]: value })
   return <section className="settings-view">
     <div className="settings-intro"><p className="eyebrow">AJUSTES</p><h1>Tu flujo, a tu manera.</h1><p className="intro">DISCO recordará estas preferencias la próxima vez que lo abras.</p></div>
@@ -60,6 +62,7 @@ export function SettingsView({ settings, directory, version, comparisonRunning, 
           <div><span>BPM con alternativas</span><strong>v2 {comparisonSummary.bpmV2CandidateHits}/{comparisonSummary.reviewed}</strong><strong>v3 {comparisonSummary.bpmV3CandidateHits}/{comparisonSummary.reviewed}</strong></div>
           <div><span>Tonalidad principal</span><strong>v2 {comparisonSummary.keyV2Hits}/{comparisonSummary.reviewed}</strong><strong>v3 {comparisonSummary.keyV3Hits}/{comparisonSummary.reviewed}</strong></div>
           <div><span>Tono con alternativas</span><strong>v2 {comparisonSummary.keyV2CandidateHits}/{comparisonSummary.reviewed}</strong><strong>v3 {comparisonSummary.keyV3CandidateHits}/{comparisonSummary.reviewed}</strong></div>
+          {comparisonReportPath && <button type="button" className="comparison-report" onClick={onRevealComparisonReport}>Abrir informe detallado</button>}
         </div>}
       </section>
     </div>
