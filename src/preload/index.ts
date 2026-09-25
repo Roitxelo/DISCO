@@ -19,6 +19,8 @@ import type {
   DownloadProgress
   , AnalysisComparisonResult
   , AnalysisComparisonProgress
+  , LocalImportProgress
+  , LocalImportResult
 } from '../shared/media'
 
 contextBridge.exposeInMainWorld('disco', {
@@ -37,6 +39,12 @@ contextBridge.exposeInMainWorld('disco', {
   revealFile: (filePath: string): Promise<void> => ipcRenderer.invoke('file:reveal', filePath),
   analyzeAudio: (filePath: string): Promise<AudioAnalysisResult> =>
     ipcRenderer.invoke('audio:analyze', filePath),
+  importLocalAudio: (): Promise<LocalImportResult> => ipcRenderer.invoke('audio:import-local'),
+  onLocalImportProgress: (callback: (progress: LocalImportProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: LocalImportProgress): void => callback(progress)
+    ipcRenderer.on('local-import:progress', listener)
+    return () => ipcRenderer.removeListener('local-import:progress', listener)
+  },
   compareAnalysisV3: (): Promise<AnalysisComparisonResult> => ipcRenderer.invoke('analysis:compare-v3'),
   onAnalysisComparisonProgress: (callback: (progress: AnalysisComparisonProgress) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, progress: AnalysisComparisonProgress): void => callback(progress)

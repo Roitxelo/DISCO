@@ -105,6 +105,16 @@ export type AnalysisComparisonProgress = {
   title: string
 }
 
+export type LocalImportProgress = {
+  completed: number
+  total: number
+  title: string
+}
+
+export type LocalImportResult =
+  | { ok: true; entries: HistoryEntry[]; importedIds: string[]; failed: Array<{ fileName: string; error: string }> }
+  | { ok: false; error: string }
+
 export type AudioAnalysisResult =
   | { ok: true; analysis: AudioAnalysis }
   | { ok: false; error: string }

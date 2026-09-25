@@ -9,6 +9,7 @@ import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../shared/media
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
 import { analyzeAudio } from './services/audioAnalysis'
 import { compareReviewedHistory } from './services/analysisComparison'
+import { importLocalAudio } from './services/localImport'
 import { generateWaveform } from './services/waveform'
 import { exportSample } from './services/sampleExport'
 import {
@@ -44,6 +45,7 @@ import type {
   HistoryRelinkRequest,
   DownloadProgress
   , AnalysisComparisonResult
+  , LocalImportResult
 } from '../shared/media'
 
 protocol.registerSchemesAsPrivileged([
@@ -211,6 +213,25 @@ app.whenReady().then(() => {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo analizar el audio.'
       return { ok: false, error: message }
+    }
+  })
+
+  ipcMain.handle('audio:import-local', async (event): Promise<LocalImportResult> => {
+    const selected = await dialog.showOpenDialog({
+      title: 'Añadir audio a DISCO',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Audio compatible', extensions: [...AUDIO_FORMATS] }]
+    })
+    if (selected.canceled || selected.filePaths.length === 0) {
+      return { ok: true, entries: await listHistory(), importedIds: [], failed: [] }
+    }
+    try {
+      const result = await importLocalAudio(selected.filePaths, (progress) => {
+        if (!event.sender.isDestroyed()) event.sender.send('local-import:progress', progress)
+      })
+      return { ok: true, ...result }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'No se pudieron importar los archivos.' }
     }
   })
 

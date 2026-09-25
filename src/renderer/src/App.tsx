@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react'
 import { SAMPLE_FORMATS } from '../../shared/media'
-import type { AnalysisComparisonProgress, AnalysisComparisonSummary, AudioAnalysis, AudioFormat, DownloadProgress, HistoryEntry, MediaInfo, ProjectStatus, SampleFormat } from '../../shared/media'
+import type { AnalysisComparisonProgress, AnalysisComparisonSummary, AudioAnalysis, AudioFormat, DownloadProgress, HistoryEntry, LocalImportProgress, MediaInfo, ProjectStatus, SampleFormat } from '../../shared/media'
 import { evaluateAnalysis } from './analysisEvaluation'
 import { Sidebar, Topbar } from './components/AppChrome'
 import type { AppView } from './components/AppChrome'
@@ -91,6 +91,8 @@ function App(): React.JSX.Element {
   const [correctionSaved, setCorrectionSaved] = useState(false)
   const [editingAnalysis, setEditingAnalysis] = useState(false)
   const [analysisReview, setAnalysisReview] = useState<'pending' | 'confirmed' | 'corrected'>('pending')
+  const [importingLocal, setImportingLocal] = useState(false)
+  const [localImportProgress, setLocalImportProgress] = useState<LocalImportProgress | null>(null)
   const [comparisonRunning, setComparisonRunning] = useState(false)
   const [comparisonProgress, setComparisonProgress] = useState<AnalysisComparisonProgress | null>(null)
   const [comparisonSummary, setComparisonSummary] = useState<AnalysisComparisonSummary | null>(null)
@@ -192,6 +194,8 @@ function App(): React.JSX.Element {
 
   useEffect(() => window.disco.onAnalysisComparisonProgress(setComparisonProgress), [])
 
+  useEffect(() => window.disco.onLocalImportProgress(setLocalImportProgress), [])
+
   useEffect(() => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
     document.documentElement.classList.toggle('reduce-motion', settings.reduceMotion)
@@ -282,6 +286,32 @@ function App(): React.JSX.Element {
     if (selectedDirectory) {
       setDirectory(selectedDirectory)
       setSettings((current) => ({ ...current, directory: selectedDirectory }))
+    }
+  }
+
+  async function importLocalFiles(): Promise<void> {
+    setImportingLocal(true)
+    setHistoryError('')
+    setError('')
+    setLocalImportProgress({ completed: 0, total: 0, title: 'Selecciona uno o varios archivos' })
+    try {
+      const result = await window.disco.importLocalAudio()
+      if (!result.ok) {
+        setHistoryError(result.error)
+        return
+      }
+      setHistory(result.entries)
+      await refreshAvailability()
+      if (result.failed.length) {
+        setHistoryError(`${result.failed.length} ${result.failed.length === 1 ? 'archivo no se pudo importar' : 'archivos no se pudieron importar'}: ${result.failed.map((item) => item.fileName).join(', ')}`)
+      }
+      const firstImported = result.entries.find((entry) => result.importedIds.includes(entry.media.id))
+      if (firstImported) openIdentification(firstImported)
+    } catch {
+      setHistoryError('La aplicación no pudo completar la importación local.')
+    } finally {
+      setImportingLocal(false)
+      setLocalImportProgress(null)
     }
   }
 
@@ -997,7 +1027,7 @@ function App(): React.JSX.Element {
       <Topbar view={view} />
 
       <section className="hero">
-        {view === 'download' && <DownloadView url={url} media={media} format={format} directory={directory} loading={loading} downloading={downloading} analyzing={analyzing} error={error} progress={downloadProgress} onUrlChange={setUrl} onFormatChange={setFormat} onAnalyze={analyze} onSelectFolder={() => void selectFolder()} onDownload={() => void download()} onCancel={() => void cancelDownload()} />}
+        {view === 'download' && <DownloadView url={url} media={media} format={format} directory={directory} loading={loading} downloading={downloading} analyzing={analyzing} importingLocal={importingLocal} localImportProgress={localImportProgress} error={error} progress={downloadProgress} onUrlChange={setUrl} onFormatChange={setFormat} onAnalyze={analyze} onImportLocal={() => void importLocalFiles()} onSelectFolder={() => void selectFolder()} onDownload={() => void download()} onCancel={() => void cancelDownload()} />}
 
         {view === 'identify' && media && downloadedFile && <IdentifyView media={media} durationLabel={formatDuration(media.durationSeconds)} downloadedFile={downloadedFile} analysis={analysis} analyzing={analyzing} analysisError={analysisError} editing={editingAnalysis} review={analysisReview} bpm={displayBpm} selectedKey={selectedKey} selectedMode={selectedMode} selectedCamelot={camelotFor(selectedKey, selectedMode)} saving={savingCorrection} correctionSaved={correctionSaved} musicalKeys={MUSICAL_KEYS} onRevealFile={() => window.disco.revealFile(downloadedFile)} onBpmChange={(value) => { setDisplayBpm(value); setCorrectionSaved(false) }} onKeyChange={(value) => { setSelectedKey(value); setCorrectionSaved(false) }} onModeChange={(value) => { setSelectedMode(value); setCorrectionSaved(false) }} onEditingChange={setEditingAnalysis} onSave={() => void saveCorrection()} onConfirm={() => void confirmAnalysis()} onCreateSamples={() => currentEntry && void openSampler(currentEntry)} onFinish={finishCurrentWork} />}
 
@@ -1012,7 +1042,7 @@ function App(): React.JSX.Element {
               ? <button className="change-song" type="button" onClick={closeSampler}>Cambiar canción</button>
               : <span>{visibleEntries.length} {visibleEntries.length === 1 ? 'canción' : 'canciones'}</span>}
           </div>
-          {view === 'collection' && <CollectionToolbar search={collectionSearch} onSearchChange={setCollectionSearch} />}
+          {view === 'collection' && <CollectionToolbar search={collectionSearch} importing={importingLocal} progress={localImportProgress} onImport={() => void importLocalFiles()} onSearchChange={setCollectionSearch} />}
           {view === 'identify' && <details className="evaluation-panel">
             <summary>
               <span>Calidad del análisis</span>

@@ -20,6 +20,8 @@ import type {
   DownloadProgress
   , AnalysisComparisonResult
   , AnalysisComparisonProgress
+  , LocalImportProgress
+  , LocalImportResult
 } from '../shared/media'
 
 declare global {
@@ -34,6 +36,8 @@ declare global {
       onDownloadProgress: (callback: (progress: DownloadProgress) => void) => () => void
       revealFile: (filePath: string) => Promise<void>
       analyzeAudio: (filePath: string) => Promise<AudioAnalysisResult>
+      importLocalAudio: () => Promise<LocalImportResult>
+      onLocalImportProgress: (callback: (progress: LocalImportProgress) => void) => () => void
       compareAnalysisV3: () => Promise<AnalysisComparisonResult>
       onAnalysisComparisonProgress: (callback: (progress: AnalysisComparisonProgress) => void) => () => void
       listHistory: () => Promise<HistoryResult>

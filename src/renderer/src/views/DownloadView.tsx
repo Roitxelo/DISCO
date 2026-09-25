@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react'
 import { AUDIO_FORMATS } from '../../../shared/media'
-import type { AudioFormat, DownloadProgress, MediaInfo } from '../../../shared/media'
+import type { AudioFormat, DownloadProgress, LocalImportProgress, MediaInfo } from '../../../shared/media'
 
 type DownloadViewProps = {
   url: string
@@ -10,11 +10,14 @@ type DownloadViewProps = {
   loading: boolean
   downloading: boolean
   analyzing: boolean
+  importingLocal: boolean
+  localImportProgress: LocalImportProgress | null
   error: string
   progress: DownloadProgress | null
   onUrlChange: (url: string) => void
   onFormatChange: (format: AudioFormat) => void
   onAnalyze: (event: FormEvent<HTMLFormElement>) => void
+  onImportLocal: () => void
   onSelectFolder: () => void
   onDownload: () => void
   onCancel: () => void
@@ -39,11 +42,14 @@ export function DownloadView({
   loading,
   downloading,
   analyzing,
+  importingLocal,
+  localImportProgress,
   error,
   progress,
   onUrlChange,
   onFormatChange,
   onAnalyze,
+  onImportLocal,
   onSelectFolder,
   onDownload,
   onCancel
@@ -63,6 +69,12 @@ export function DownloadView({
       {loading && <p className="status" role="status">Preparando la información del vídeo…</p>}
       {error && <p className="error" role="alert">{error}</p>}
     </form>
+
+    <div className="local-import-entry">
+      <span><strong>¿El audio ya está en tu equipo?</strong><small>Añade WAV, MP3, FLAC o M4A sin pasar por YouTube.</small></span>
+      <button type="button" disabled={importingLocal || downloading} onClick={onImportLocal}>{importingLocal ? 'Importando…' : 'Añadir audio local'}</button>
+      {importingLocal && localImportProgress && <p role="status">{localImportProgress.completed}/{localImportProgress.total || '—'} · {localImportProgress.title}</p>}
+    </div>
 
     {media ? <article className="media-card download-card">
       {media.thumbnailUrl ? <img src={media.thumbnailUrl} alt="" /> : <div className="media-placeholder" />}
