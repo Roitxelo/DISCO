@@ -8,6 +8,7 @@ import { is } from '@electron-toolkit/utils'
 import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../shared/media'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
 import { analyzeAudio } from './services/audioAnalysis'
+import { compareReviewedHistory } from './services/analysisComparison'
 import { generateWaveform } from './services/waveform'
 import { exportSample } from './services/sampleExport'
 import {
@@ -42,6 +43,7 @@ import type {
   HistoryAvailabilityResult,
   HistoryRelinkRequest,
   DownloadProgress
+  , AnalysisComparisonResult
 } from '../shared/media'
 
 protocol.registerSchemesAsPrivileged([
@@ -208,6 +210,18 @@ app.whenReady().then(() => {
       return { ok: true, analysis: await analyzeAudio(filePath) }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo analizar el audio.'
+      return { ok: false, error: message }
+    }
+  })
+
+  ipcMain.handle('analysis:compare-v3', async (event): Promise<AnalysisComparisonResult> => {
+    try {
+      const comparison = await compareReviewedHistory((progress) => {
+        if (!event.sender.isDestroyed()) event.sender.send('analysis:comparison-progress', progress)
+      })
+      return { ok: true, ...comparison }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo completar la comparación del análisis.'
       return { ok: false, error: message }
     }
   })

@@ -18,6 +18,8 @@ import type {
   HistoryAvailabilityResult,
   HistoryRelinkRequest,
   DownloadProgress
+  , AnalysisComparisonResult
+  , AnalysisComparisonProgress
 } from '../shared/media'
 
 declare global {
@@ -32,6 +34,8 @@ declare global {
       onDownloadProgress: (callback: (progress: DownloadProgress) => void) => () => void
       revealFile: (filePath: string) => Promise<void>
       analyzeAudio: (filePath: string) => Promise<AudioAnalysisResult>
+      compareAnalysisV3: () => Promise<AnalysisComparisonResult>
+      onAnalysisComparisonProgress: (callback: (progress: AnalysisComparisonProgress) => void) => () => void
       listHistory: () => Promise<HistoryResult>
       checkHistoryAvailability: () => Promise<HistoryAvailabilityResult>
       relinkHistoryFile: (request: HistoryRelinkRequest) => Promise<HistoryResult>

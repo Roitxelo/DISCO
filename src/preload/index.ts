@@ -17,6 +17,8 @@ import type {
   HistoryAvailabilityResult,
   HistoryRelinkRequest,
   DownloadProgress
+  , AnalysisComparisonResult
+  , AnalysisComparisonProgress
 } from '../shared/media'
 
 contextBridge.exposeInMainWorld('disco', {
@@ -35,6 +37,12 @@ contextBridge.exposeInMainWorld('disco', {
   revealFile: (filePath: string): Promise<void> => ipcRenderer.invoke('file:reveal', filePath),
   analyzeAudio: (filePath: string): Promise<AudioAnalysisResult> =>
     ipcRenderer.invoke('audio:analyze', filePath),
+  compareAnalysisV3: (): Promise<AnalysisComparisonResult> => ipcRenderer.invoke('analysis:compare-v3'),
+  onAnalysisComparisonProgress: (callback: (progress: AnalysisComparisonProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: AnalysisComparisonProgress): void => callback(progress)
+    ipcRenderer.on('analysis:comparison-progress', listener)
+    return () => ipcRenderer.removeListener('analysis:comparison-progress', listener)
+  },
   listHistory: (): Promise<HistoryResult> => ipcRenderer.invoke('history:list'),
   checkHistoryAvailability: (): Promise<HistoryAvailabilityResult> => ipcRenderer.invoke('history:availability'),
   relinkHistoryFile: (request: HistoryRelinkRequest): Promise<HistoryResult> => ipcRenderer.invoke('history:relink', request),
