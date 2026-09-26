@@ -30,7 +30,14 @@ jobs:
           cache: npm
 
       - name: Instalar dependencias reproducibles
-        run: npm ci
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            npm ci && exit 0
+            echo "npm ci falló (intento $attempt/3). Reintentando..."
+            sleep $((attempt * 5))
+          done
+          exit 1
 
       - name: Comprobar vulnerabilidades altas
         run: npm audit --audit-level=high
@@ -63,7 +70,14 @@ jobs:
           cache: npm
 
       - name: Instalar dependencias reproducibles
-        run: npm ci
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            npm ci && exit 0
+            echo "npm ci falló (intento $attempt/3). Reintentando..."
+            sleep $((attempt * 5))
+          done
+          exit 1
 
       - name: Comprobar tipos y generar la aplicación
         run: npm run check
