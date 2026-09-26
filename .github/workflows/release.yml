@@ -124,6 +124,7 @@ jobs:
           fi
 
           gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
             release-assets/DISCO-Windows-x64/* \
             release-assets/DISCO-macOS-Intel-x64/* \
             --title "DISCO ${GITHUB_REF_NAME}" \
