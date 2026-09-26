@@ -14,10 +14,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: TypeScript y build
+  seguridad:
+    name: Auditoría de dependencias
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias reproducibles
+        run: npm ci
+
+      - name: Comprobar vulnerabilidades altas
+        run: npm audit --audit-level=high
+
+  build:
+    name: Build en ${{ matrix.name }}
+    needs: seguridad
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            os: ubuntu-latest
+          - name: Windows x64
+            os: windows-latest
+          - name: macOS Intel x64
+            os: macos-15-intel
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
 
     steps:
       - name: Descargar repositorio
@@ -33,4 +66,4 @@ jobs:
         run: npm ci
 
       - name: Comprobar tipos y generar la aplicación
-        run: npm run build
+        run: npm run check
