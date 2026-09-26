@@ -10,11 +10,15 @@
 - Favoritos, etiquetas y estados de proyecto.
 - Ajustes persistentes y reducción de animaciones.
 - Banco comparativo v2/v3 con informe JSON.
-- Icono, configuración NSIS y validación mediante GitHub Actions.
+- Iconos y empaquetado mediante Electron Builder.
+- Instalador Windows x64 probado.
+- DMG macOS Intel x64 probado.
+- Electron 44.4.5 con `npm audit` sin vulnerabilidades conocidas al cerrar la beta.
 
 ## Cierre de beta
 
-- Generar y probar el instalador Windows x64.
+- Reforzar la validación multiplataforma mediante GitHub Actions.
+- Revisar documentación y repositorio para publicación.
 - Fusionar `analysis-v3` en `main`.
 - Publicar `v0.1.0-beta.1` en GitHub Releases.
 
@@ -38,5 +42,7 @@
 ### Distribución
 
 - Firma digital para Windows.
-- DMG firmado y notarizado para macOS.
+- Firma y notarización para macOS.
+- Build y validación de macOS Apple Silicon arm64.
+- Automatizar la creación de artefactos de release cuando el flujo esté estabilizado.
 - Actualizaciones automáticas cuando exista infraestructura estable.

@@ -1,6 +1,6 @@
 # Historial de cambios
 
-## 0.1.0-beta.1 — 2026-09-25
+## 0.1.0-beta.1 — 2026-09-26
 
 Primera beta compartible de DISCO.
 
@@ -14,10 +14,19 @@ Primera beta compartible de DISCO.
 - Forma de onda y exportación no destructiva de samples.
 - Normalización, fundidos y selección por compases.
 - Banco comparativo v2/v3.
-- Configuración NSIS, icono y validación automática.
+- Instalador NSIS para Windows x64.
+- DMG para macOS Intel x64.
+- Electron 44.4.5 y auditoría npm sin vulnerabilidades conocidas en el cierre de la beta.
+- Validación automática mediante GitHub Actions.
+
+### Validación manual
+
+- Windows x64: instalación y flujo funcional completo validados.
+- macOS Intel x64: instalación y flujo funcional completo validados.
 
 ### Limitaciones
 
-- Instalador sin firma digital.
-- Sin actualizaciones automáticas.
-- Distribución macOS pendiente de firma y pruebas.
+- Los instaladores todavía no están firmados digitalmente.
+- macOS todavía no está notarizado.
+- Apple Silicon arm64 no está validado.
+- No hay actualizaciones automáticas.

@@ -4,7 +4,16 @@
 
 DISCO es una aplicación de escritorio para productores musicales. Reúne la descarga de audio autorizado, la importación local, el análisis de BPM y tonalidad, la creación no destructiva de samples y la organización de una colección local.
 
-> Estado: candidata a beta `0.1.0-beta.1` para Windows x64. Los resultados musicales son estimaciones y siempre pueden revisarse.
+> Estado: beta `0.1.0-beta.1` validada manualmente en Windows x64 y macOS x64. Los resultados musicales son estimaciones y siempre pueden revisarse.
+
+## Descargar e instalar
+
+La beta se distribuye mediante instaladores generados con Electron Builder:
+
+- Windows x64: instalador NSIS `.exe`.
+- macOS Intel x64: imagen `.dmg`.
+
+Consulta la [guía de instalación](docs/INSTALLATION.md) para los pasos y advertencias de cada sistema.
 
 ## Funciones
 
@@ -22,7 +31,7 @@ Los archivos, preferencias e historial permanecen en el equipo. DISCO no necesit
 
 ## Desarrollo
 
-Requisitos: Node.js 22 o posterior y npm.
+Requisitos: Node.js 22 y npm. El repositorio incluye `.nvmrc` para mantener el mismo entorno entre equipos.
 
 ```bash
 git clone https://github.com/Roitxelo/DISCO.git
@@ -31,18 +40,33 @@ npm ci
 npm run dev
 ```
 
-Validación y empaquetado:
+Validación:
 
 ```bash
+npm audit
 npm run check
+```
+
+Empaquetado local:
+
+```bash
 npm run dist:win
 npm run dist:mac
 ```
 
 Los artefactos se generan en `dist/` y no se incorporan al repositorio.
 
+## Plataformas validadas
+
+| Plataforma | Arquitectura | Estado |
+| --- | --- | --- |
+| Windows | x64 | Instalador y flujo completo validados |
+| macOS | Intel x64 | DMG y flujo completo validados |
+| macOS | Apple Silicon arm64 | Pendiente de validación |
+
 ## Documentación
 
+- [Instalación](docs/INSTALLATION.md)
 - [Guía de uso](docs/USER_GUIDE.md)
 - [Arquitectura](docs/ARCHITECTURE.md)
 - [Motor v3.2](docs/ANALYSIS_V3.md)
