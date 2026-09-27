@@ -1,11 +1,11 @@
-# Problemas conocidos de 0.1.0-beta.1
+# Problemas conocidos de 0.1.0-beta.2
 
 La beta funciona en Windows x64 y macOS Intel, pero todavía hay algunas cosas a tener en cuenta.
 
 - **Windows puede mostrar SmartScreen.** El instalador todavía no tiene firma de código.
 - **macOS puede bloquear la primera apertura.** El DMG no está firmado ni notarizado.
 - **Apple Silicon todavía no está validado.** No doy soporte oficial a arm64 en esta beta.
-- **La primera descarga desde YouTube necesita conexión.** DISCO tiene que obtener y verificar yt-dlp.
+- **La primera operación que necesita herramientas externas requiere conexión.** DISCO descarga y verifica yt-dlp y FFmpeg bajo demanda.
 - **El análisis no es infalible.** En algunos temas puede aparecer mitad/doble tempo o una duda entre modos mayor y menor.
 - **Las notas se muestran con sostenidos.** Por ejemplo, `G#` y `A♭` son equivalentes.
 - **Los análisis antiguos no se sobrescriben solos.** Los elementos creados antes de v3.2 conservan su resultado histórico.
