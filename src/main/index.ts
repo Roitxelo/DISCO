@@ -4,7 +4,7 @@ import { basename, dirname, extname, join } from 'node:path'
 import { rename, rm, stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { pathToFileURL } from 'node:url'
-import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, protocol, session, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../shared/media'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
@@ -114,7 +114,9 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: true,
+      allowRunningInsecureContent: false
     }
   })
 
@@ -154,8 +156,18 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  session.defaultSession.setPermissionCheckHandler(() => false)
+  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false))
+
   protocol.handle('disco-audio', async (request) => {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      return new Response('Método no permitido.', { status: 405 })
+    }
+
     const url = new URL(request.url)
+    if (url.hostname !== 'history' && url.hostname !== 'sample') {
+      return new Response('Recurso no válido.', { status: 404 })
+    }
     const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
     const entry = (await listHistory()).find((item) => item.id === parts[0])
     if (!entry) return new Response('Audio no autorizado.', { status: 404 })
