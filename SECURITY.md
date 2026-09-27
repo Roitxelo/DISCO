@@ -1,8 +1,10 @@
 # Seguridad
 
-Si encuentras un problema de seguridad en DISCO, gracias por no publicarlo directamente en un Issue con todos los detalles si podría poner a otros usuarios en riesgo.
+Si encuentras un problema de seguridad en DISCO, evita publicar detalles explotables en un Issue.
 
-Puedes abrir un Issue con una descripción general y sin incluir pasos de explotación, credenciales, datos personales ni archivos sensibles. A partir de ahí coordinamos cómo compartir la información necesaria de forma más privada.
+Cuando el repositorio sea público, la vía preferida será **GitHub Private vulnerability reporting** desde la pestaña **Security**. Así se puede describir el problema sin hacerlo visible para todo el mundo.
+
+Si esa opción todavía no aparece, abre un Issue indicando únicamente que has encontrado un posible problema de seguridad y que necesitas un canal privado. No incluyas pasos de explotación, credenciales, datos personales ni archivos sensibles.
 
 ## Qué información ayuda
 
@@ -12,16 +14,23 @@ Si puedes, incluye:
 - sistema operativo;
 - parte de la aplicación afectada;
 - impacto que crees que puede tener;
-- si el problema necesita interacción del usuario o un archivo/enlace preparado.
+- si requiere interacción del usuario;
+- si depende de un archivo o enlace preparado.
 
 No incluyas tokens, contraseñas, claves privadas ni datos personales reales.
 
-## Dependencias
+## Dependencias e historial
 
-El proyecto ejecuta `npm audit --audit-level=high` en GitHub Actions.
+El CI ejecuta:
 
-Eso no sustituye una revisión de seguridad, pero sirve para detectar vulnerabilidades conocidas en dependencias antes de integrar cambios en `main`.
+- `npm audit`;
+- build en Linux, Windows y macOS;
+- Gitleaks sobre el historial Git completo.
+
+Estas comprobaciones ayudan a detectar advisories conocidos, secretos accidentales y regresiones de build, pero no sustituyen una revisión manual del código.
 
 ## Versiones soportadas
 
-Ahora mismo solo se mantiene la beta más reciente publicada. Las versiones anteriores pueden contener problemas que ya estén corregidos en `main`.
+Ahora mismo solo se mantiene la beta más reciente publicada.
+
+Si un problema afecta a una versión antigua, comprueba primero si sigue existiendo en la última release o en `main`.
