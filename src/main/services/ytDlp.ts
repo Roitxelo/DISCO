@@ -8,8 +8,8 @@ import { pipeline } from 'node:stream/promises'
 import { execFile, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 import { app } from 'electron'
-import ffmpegPath from 'ffmpeg-static'
 import { AUDIO_FORMATS } from '../../shared/media'
+import { getFfmpegPath } from './ffmpeg'
 import type { AudioFormat, DownloadProgress, MediaInfo } from '../../shared/media'
 
 const execFileAsync = promisify(execFile)
@@ -133,11 +133,6 @@ function isForbiddenError(error: unknown): boolean {
   return `${error.message}\n${processError.stderr ?? ''}`.includes('HTTP Error 403')
 }
 
-export function getFfmpegPath(): string {
-  if (!ffmpegPath) throw new Error('FFmpeg no está disponible en esta instalación.')
-  return app.isPackaged ? ffmpegPath.replace('app.asar', 'app.asar.unpacked') : ffmpegPath
-}
-
 export function validateYoutubeUrl(rawUrl: string): URL {
   let url: URL
   try {
@@ -198,6 +193,7 @@ export async function downloadAudio(
 
   const outputTemplate = join(directory, '%(title).180B [%(id)s].%(ext)s')
   const downloadStartedAt = Date.now()
+  const ffmpegPath = await getFfmpegPath()
   const commonArguments = [
       '--no-playlist',
       '--newline',
@@ -215,7 +211,7 @@ export async function downloadAudio(
       '--audio-quality',
       '0',
       '--ffmpeg-location',
-      getFfmpegPath(),
+      ffmpegPath,
       '--output',
       outputTemplate,
       '--print',
