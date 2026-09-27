@@ -1,0 +1,69 @@
+name: Reportar un bug
+description: Algo no funciona como debería
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportarlo. Cuanto más concreto sea el caso, más fácil será reproducirlo.
+
+  - type: input
+    id: version
+    attributes:
+      label: Versión de DISCO
+      placeholder: "0.1.0-beta.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Sistema
+      options:
+        - Windows x64
+        - macOS Intel
+        - macOS Apple Silicon
+        - Otro
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qué ha pasado
+      description: Cuenta qué estabas intentando hacer y qué ocurrió.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. Abrí...
+        2. Pulsé...
+        3. Apareció...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Qué esperabas que pasase
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Información extra
+      description: Capturas, mensaje de error o cualquier detalle que pueda ayudar. No pegues contraseñas, tokens ni datos privados.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Antes de enviarlo
+      options:
+        - label: He comprobado que no hay un Issue abierto sobre el mismo problema.
+          required: true

@@ -1,0 +1,36 @@
+name: Proponer una mejora
+description: Idea para hacer DISCO más útil o más cómodo
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        No hace falta presentar una especificación perfecta. Me interesa sobre todo entender qué problema resolvería.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qué problema intentas resolver
+      description: Cuéntalo desde el uso real, no solo desde la función que te gustaría añadir.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Cómo te imaginas la mejora
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas
+      description: Si ahora haces esto de otra forma, cuenta cómo.
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Algo más
+      description: Referencias, capturas o ejemplos que ayuden a entender la idea.
