@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
-import { access, chmod, mkdir, readFile, rename, rm } from 'node:fs/promises'
+import { access, chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { arch, platform } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
@@ -104,17 +104,12 @@ async function installFfmpeg(): Promise<string> {
     if (platform() !== 'win32') await chmod(temporaryPath, 0o755)
     await rm(binaryPath, { force: true })
     await rename(temporaryPath, binaryPath)
-    await BunPlaceholder(markerPath, binary.sha256)
+    await writeFile(markerPath, `${binary.sha256}\n`, 'utf8')
     return binaryPath
   } catch (error) {
     await rm(temporaryPath, { force: true })
     throw error
   }
-}
-
-async function BunPlaceholder(path: string, hash: string): Promise<void> {
-  const { writeFile } = await import('node:fs/promises')
-  await writeFile(path, `${hash}\n`, 'utf8')
 }
 
 export function getFfmpegPath(): Promise<string> {
