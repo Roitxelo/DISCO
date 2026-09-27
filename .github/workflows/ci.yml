@@ -41,6 +41,14 @@ jobs:
           done
           exit 1
 
+      - name: Comprobar que FFmpeg no se empaqueta como dependencia npm
+        shell: bash
+        run: |
+          if [ -d node_modules/ffmpeg-static ]; then
+            echo "ffmpeg-static sigue instalado y debe salir del árbol npm."
+            exit 1
+          fi
+
       - name: Comprobar vulnerabilidades altas
         run: npm audit
 
