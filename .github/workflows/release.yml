@@ -42,7 +42,7 @@ jobs:
           exit 1
 
       - name: Auditar dependencias
-        run: npm audit --audit-level=high
+        run: npm audit
 
       - name: Construir instalador
         run: npm run dist:win
@@ -88,7 +88,7 @@ jobs:
           exit 1
 
       - name: Auditar dependencias
-        run: npm audit --audit-level=high
+        run: npm audit
 
       - name: Construir DMG
         run: npm run dist:mac
