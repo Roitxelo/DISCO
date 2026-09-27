@@ -18,9 +18,6 @@ Ahora mismo está en beta, pero ya se puede usar de principio a fin en **Windows
 
 *Identifica: análisis con BPM, tonalidad, Camelot y revisión manual.*
 
-<img src="docs/assets/descarga.webp" alt="Pantalla Descarga de DISCO con un tema preparado para convertir y analizar" width="100%">
-
-*Descarga: trae el audio, elige formato y deja preparado el análisis.*
 
 ## Descargar
 
