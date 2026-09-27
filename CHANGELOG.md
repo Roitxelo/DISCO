@@ -2,31 +2,37 @@
 
 ## 0.1.0-beta.1 — 2026-09-26
 
-Primera beta compartible de DISCO.
+Primera beta de DISCO que considero suficientemente cerrada como para compartirla fuera del entorno de desarrollo.
 
-### Incluye
+### Qué trae
 
 - Descarga y conversión de audio autorizado.
-- Importación múltiple local.
+- Importación múltiple de archivos locales.
 - Motor v3.2 para BPM, tonalidad, modo y Camelot.
-- Alternativas, confianza y revisión manual.
-- Colección, reproductor, relocalización y organización.
-- Forma de onda y exportación no destructiva de samples.
-- Normalización, fundidos y selección por compases.
-- Banco comparativo v2/v3.
+- Alternativas y avisos cuando el análisis tiene dudas.
+- Corrección manual sin perder la detección original.
+- Colección con reproducción, relocalización y organización.
+- Editor de samples sobre forma de onda.
+- Ajuste por compases, normalización y fundidos.
+- Exportación en WAV, MP3 y FLAC.
+- Banco comparativo entre v2 y v3.
 - Instalador NSIS para Windows x64.
 - DMG para macOS Intel x64.
-- Electron 44.4.5 y auditoría npm sin vulnerabilidades conocidas en el cierre de la beta.
-- Validación automática mediante GitHub Actions.
+- Electron 44.4.5.
+- GitHub Actions para validación y creación de releases.
 
-### Validación manual
+### Qué se ha probado
 
-- Windows x64: instalación y flujo funcional completo validados.
-- macOS Intel x64: instalación y flujo funcional completo validados.
+La beta se instaló y probó manualmente en:
 
-### Limitaciones
+- Windows x64;
+- macOS Intel x64.
 
-- Los instaladores todavía no están firmados digitalmente.
-- macOS todavía no está notarizado.
-- Apple Silicon arm64 no está validado.
-- No hay actualizaciones automáticas.
+En ambos casos se comprobó el flujo principal: importación, análisis, reproducción, samples, persistencia y descarga/conversión.
+
+### Pendiente
+
+- firma digital en Windows;
+- firma y notarización en macOS;
+- soporte validado para Apple Silicon;
+- actualizaciones automáticas.

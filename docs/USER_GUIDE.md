@@ -1,37 +1,97 @@
 # Guía de uso
 
-## Primer inicio
+DISCO está organizado siguiendo el mismo recorrido que suele hacerse al preparar material:
 
-1. En Ajustes, elige una carpeta para descargas.
-2. Selecciona WAV, MP3, FLAC o M4A.
-3. Configura samples y animaciones.
+**Descarga → Identifica → Samplea → Colecciona / Organiza**
 
-## Descargar audio autorizado
+No tienes que usar siempre todas las partes. También puedes importar archivos que ya tengas y empezar directamente desde ahí.
 
-En **Descarga**, pega el enlace, comprueba los metadatos, elige formato y carpeta e inicia la descarga. El primer uso descarga `yt-dlp`, necesita conexión y puede tardar más.
+## Antes de empezar
 
-## Importar archivos locales
+En **Ajustes** puedes elegir:
 
-Pulsa **Añadir audio** desde Descarga o Colección. Puedes seleccionar varios archivos. DISCO los procesa uno a uno y conserva su ubicación original; si los mueves, utiliza la opción de volver a enlazar.
+- carpeta de descargas;
+- formato de audio;
+- opciones de samples;
+- preferencias de interfaz y animaciones.
 
-## Revisar el análisis
+Si solo quieres probar la app, con escoger una carpeta de descarga ya puedes empezar.
 
-- Comprueba BPM, tonalidad y Camelot.
-- Abre alternativas cuando aparezca “Revisión recomendada”.
-- Confirma con **Datos correctos** o modifica con **Corregir**.
-- `G#` y `A♭` son equivalentes; la interfaz utiliza sostenidos.
+## Descargar audio
+
+En **Descarga**:
+
+1. pega el enlace;
+2. deja que DISCO lea los metadatos;
+3. elige formato y carpeta;
+4. inicia la descarga.
+
+La primera descarga puede tardar un poco más porque DISCO prepara yt-dlp.
+
+Usa esta función únicamente con contenido que puedas descargar y utilizar.
+
+## Importar archivos que ya tienes
+
+Desde **Descarga** o **Colección**, pulsa **Añadir audio**.
+
+Puedes seleccionar varios archivos a la vez. DISCO acepta:
+
+- WAV
+- MP3
+- FLAC
+- M4A
+
+Los archivos no se copian a otra carpeta: DISCO guarda una referencia a su ubicación original.
+
+Si más adelante los mueves, puedes volver a enlazarlos desde la colección.
+
+## Revisar BPM y tonalidad
+
+Después del análisis verás BPM, tonalidad y Camelot.
+
+No siempre existe una única respuesta evidente. En temas con mitad/doble tempo o una relación mayor/menor poco clara, DISCO puede mostrar **Revisión recomendada** y enseñarte alternativas.
+
+Si el resultado te cuadra, confirma con **Datos correctos**.
+
+Si no, usa **Corregir**. La corrección queda guardada sin borrar el resultado original del análisis.
+
+Las notas se muestran con sostenidos, así que por ejemplo `G#` y `A♭` representan la misma nota.
 
 ## Crear un sample
 
-1. Abre una canción en **Samplea**.
-2. Marca inicio y final en la forma de onda.
-3. Ajusta a 1, 2, 4 u 8 compases si lo necesitas.
-4. Comprueba el bucle.
-5. Elige formato y normalización.
-6. Exporta.
+Abre un tema en **Samplea** y trabaja directamente sobre la forma de onda.
 
-Se aplican fundidos cortos para reducir clics. El original nunca se modifica.
+Puedes:
 
-## Colección y privacidad
+1. marcar inicio y final;
+2. mover la selección;
+3. hacer zoom;
+4. ajustar a 1, 2, 4 u 8 compases;
+5. escuchar el bucle;
+6. elegir formato;
+7. exportar.
 
-Puedes reproducir, editar, localizar, etiquetar y marcar favoritos. Los samples quedan asociados a su origen. El historial y sus copias de seguridad son locales; DISCO no envía audio, rutas ni estadísticas.
+DISCO añade fundidos cortos para reducir clics en los cortes.
+
+El archivo original no se modifica.
+
+## Colección
+
+La colección sirve para no perder de vista todo lo que ya has pasado por DISCO.
+
+Desde ahí puedes:
+
+- reproducir;
+- editar datos;
+- ver samples asociados;
+- marcar favoritos;
+- añadir etiquetas;
+- cambiar el estado del tema;
+- volver a enlazar archivos movidos;
+- eliminar elementos con confirmación.
+
+## Privacidad
+
+Todo esto se guarda localmente.
+
+DISCO no sube tu audio, tus rutas ni tus estadísticas a ningún servidor. No hace falta crear una cuenta.

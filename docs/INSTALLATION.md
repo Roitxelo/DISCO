@@ -1,42 +1,76 @@
-# Instalación de DISCO 0.1.0-beta.1
+# Instalar DISCO 0.1.0-beta.1
 
-Esta beta ha sido validada manualmente en Windows x64 y macOS Intel x64.
+La beta actual está probada en **Windows x64** y **macOS Intel x64**.
+
+Los instaladores están en la [release v0.1.0-beta.1](https://github.com/Roitxelo/DISCO/releases/tag/v0.1.0-beta.1).
 
 ## Windows x64
 
-1. Descarga el instalador `DISCO-0.1.0-beta.1-win-x64.exe` desde la release oficial.
-2. Ejecuta el instalador.
-3. Elige la carpeta de instalación si quieres cambiar la predeterminada.
-4. Abre DISCO desde el acceso directo o el menú Inicio.
+Descarga:
 
-El instalador todavía no está firmado. Windows SmartScreen puede mostrar una advertencia al tratarse de una beta sin reputación de firma. Verifica que el archivo procede de la release oficial del repositorio antes de continuar.
+`DISCO-0.1.0-beta.1-win-x64.exe`
 
-## macOS Intel x64
+Después:
 
-1. Descarga `DISCO-0.1.0-beta.1-mac-x64.dmg` desde la release oficial.
-2. Abre el DMG.
-3. Arrastra `DISCO.app` a `Applications`.
-4. Abre DISCO desde Aplicaciones.
+1. abre el instalador;
+2. elige la carpeta si no quieres usar la predeterminada;
+3. termina la instalación;
+4. abre DISCO desde el acceso directo o desde Inicio.
 
-La beta todavía no está firmada ni notarizada por Apple. Si macOS bloquea la primera apertura, comprueba que el DMG procede de la release oficial y utiliza la opción de apertura permitida por macOS en Ajustes del Sistema → Privacidad y seguridad.
+### Si aparece SmartScreen
+
+Esta beta todavía no tiene firma de código, así que Windows puede mostrar una advertencia aunque el archivo sea el correcto.
+
+Comprueba que lo has descargado desde la release oficial del repositorio antes de continuar.
+
+## macOS Intel
+
+Descarga:
+
+`DISCO-0.1.0-beta.1-mac-x64.dmg`
+
+Después:
+
+1. abre el DMG;
+2. arrastra `DISCO.app` a `Applications`;
+3. abre DISCO desde Aplicaciones.
+
+### Si macOS bloquea la primera apertura
+
+El DMG todavía no está firmado ni notarizado por Apple. macOS puede frenarlo la primera vez por ese motivo.
+
+Comprueba primero que el archivo viene de la release oficial. Si es así, puedes autorizar la apertura desde **Ajustes del Sistema → Privacidad y seguridad**.
 
 ## Apple Silicon
 
-La beta 0.1.0-beta.1 todavía no tiene una build arm64 validada. No se anuncia soporte oficial para Apple Silicon en esta versión.
+Todavía no doy soporte oficial a la build arm64 porque no está validada.
 
-## Primer inicio y componentes externos
+Eso está en la lista de siguientes pasos del proyecto.
 
-DISCO incluye FFmpeg en el paquete. La primera operación que necesita YouTube descarga el binario oficial de `yt-dlp` correspondiente al sistema y verifica su hash SHA-256 antes de usarlo.
+## ¿Tengo que instalar algo más?
 
-No es necesario instalar Node.js, npm, FFmpeg ni yt-dlp para utilizar los instaladores.
+No.
 
-## Actualizar una beta anterior
+Los instaladores ya llevan lo necesario para ejecutar DISCO:
 
-Puedes instalar una nueva build de la misma beta sobre la anterior. Los datos de usuario, la colección y las preferencias se almacenan fuera del ejecutable de la aplicación y deberían conservarse.
+- FFmpeg va incluido;
+- yt-dlp se descarga automáticamente la primera vez que hace falta;
+- no necesitas Node.js;
+- no necesitas npm.
 
-## Desarrollo
+Cuando DISCO descarga yt-dlp, usa la publicación oficial correspondiente al sistema y comprueba el hash SHA-256 antes de instalarlo.
 
-Para trabajar con el código fuente sí necesitas Node.js 22 y npm:
+## Actualizar DISCO
+
+Puedes instalar una build nueva encima de una anterior.
+
+La colección, las preferencias y el historial se guardan fuera de la carpeta de la aplicación, así que una actualización normal no debería borrarlos.
+
+Aun así, mientras el proyecto siga en beta, siempre es buena idea conservar el audio original.
+
+## Si quieres trabajar con el código
+
+Entonces sí necesitas **Node.js 22** y npm:
 
 ```bash
 git clone https://github.com/Roitxelo/DISCO.git
@@ -45,7 +79,7 @@ npm ci
 npm run dev
 ```
 
-Antes de proponer cambios:
+Para comprobar que todo está bien antes de hacer cambios:
 
 ```bash
 npm audit

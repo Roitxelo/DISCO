@@ -1,51 +1,92 @@
 # Arquitectura de DISCO
 
+DISCO está montado con Electron, React y TypeScript. La separación entre procesos intenta ser bastante simple: la interfaz no toca directamente el sistema y todo lo que necesita permisos pasa por preload/main.
+
 ## Capas
 
-- **Renderer (`src/renderer`)**: interfaz React sin acceso directo a Node.js.
-- **Preload (`src/preload`)**: contrato IPC mínimo y tipado mediante `window.disco`.
-- **Main (`src/main`)**: ventanas, diálogos, archivos, historial y coordinación.
+- **Renderer (`src/renderer`)**: interfaz React.
+- **Preload (`src/preload`)**: expone a la interfaz solo las funciones IPC que necesita mediante `window.disco`.
+- **Main (`src/main`)**: ventanas, diálogos, archivos, historial y coordinación general.
 - **Servicios (`src/main/services`)**: descarga, conversión, análisis, forma de onda, samples e historial.
-- **Tipos (`src/shared`)**: contratos compartidos por las tres capas.
+- **Tipos (`src/shared`)**: contratos que comparten renderer, preload y main.
 
-La ventana mantiene `contextIsolation` y sandbox. Los procesos externos reciben listas de argumentos; no se construyen comandos de shell concatenando datos del usuario.
+La ventana usa `contextIsolation`, sandbox y `nodeIntegration: false`.
+
+Cuando DISCO llama a procesos externos, pasa argumentos separados. No construye comandos de shell concatenando datos introducidos por el usuario.
 
 ## Flujo de audio
 
-### Descarga
+### Cuando descargas
 
-1. El renderer solicita metadatos.
-2. Main valida el enlace y coordina `yt-dlp`.
+1. La interfaz pide los metadatos.
+2. Main valida el enlace y coordina yt-dlp.
 3. FFmpeg convierte al formato elegido.
 4. El motor v3.2 analiza el archivo.
-5. El resultado se guarda pendiente de revisión.
+5. El resultado entra en la colección pendiente de revisión.
 
-### Importación local
+### Cuando importas un archivo local
 
-Un diálogo nativo admite selección múltiple. Cada archivo se valida y procesa de forma independiente, por lo que un error parcial no cancela el lote. DISCO guarda una referencia al original y no duplica el audio.
+Se abre un diálogo nativo y puedes escoger varios archivos.
 
-Formatos admitidos: WAV, MP3, FLAC y M4A.
+Cada uno se procesa de forma independiente. Si uno falla, no se cancela todo el lote.
+
+DISCO guarda la ruta del archivo original; no crea una copia solo por importarlo.
+
+Formatos soportados actualmente:
+
+- WAV
+- MP3
+- FLAC
+- M4A
 
 ## Herramientas externas
 
-- `yt-dlp` se descarga desde publicaciones oficiales, se verifica con SHA-256 y se almacena en los datos privados.
-- FFmpeg procede de `ffmpeg-static` y se desempaqueta del ASAR para permitir su ejecución.
-- Meyda se usa para extraer características espectrales.
+### yt-dlp
+
+No hace falta instalarlo manualmente.
+
+DISCO descarga el binario oficial para el sistema, comprueba su SHA-256 y lo guarda dentro de los datos de usuario de la aplicación.
+
+### FFmpeg
+
+Se incluye mediante `ffmpeg-static`.
+
+En la versión empaquetada se saca del ASAR porque necesita existir como ejecutable real en disco.
+
+### Meyda
+
+Se usa para obtener características espectrales que después alimentan parte del análisis.
 
 ## Motor de análisis
 
-El audio se decodifica a mono y 22.050 Hz. La v3.2 combina envolvente de ataques multibanda, autocorrelación, estabilidad temporal, familias métricas, cromas por segmentos, corrección de afinación, perfiles Krumhansl y Temperley, evidencia armónica y calibración conservadora de confianza.
+El audio se decodifica en mono a 22.050 Hz.
 
-El resultado contiene tres alternativas de BPM y tonalidad. Los diagnósticos internos permiten comparar candidatos sin mostrarlos en el flujo normal.
+La v3.2 combina varias señales en lugar de depender de una única medición: ataques multibanda, autocorrelación, estabilidad temporal, familias métricas, cromas por segmentos, afinación, perfiles tonales y evidencia armónica.
+
+El motor devuelve un candidato principal y alternativas. Los diagnósticos más detallados se guardan para comparación y desarrollo, no para llenar la interfaz de números.
+
+Hay más detalle en [ANALYSIS_V3.md](ANALYSIS_V3.md).
 
 ## Persistencia
 
-El historial vive en `app.getPath('userData')`. Se escribe primero un temporal, se valida el historial previo, se conserva una copia de seguridad y finalmente se reemplaza mediante renombrado. Las preferencias también son locales. No existe servidor, cuenta, telemetría ni sincronización.
+El historial vive en `app.getPath('userData')`.
+
+Al guardar, DISCO intenta evitar que un cierre inesperado deje el historial a medias:
+
+1. escribe un archivo temporal;
+2. conserva una copia del historial anterior;
+3. reemplaza el archivo final mediante renombrado.
+
+Las preferencias también se guardan localmente.
+
+No hay servidor, cuenta, sincronización ni telemetría.
 
 ## Distribución
 
-- Versión: `0.1.0-beta.1`.
-- Windows: NSIS x64, instalación por usuario.
-- macOS: DMG preparado, todavía sin firma ni notarización.
-- GitHub Actions ejecuta `npm ci` y `npm run build`.
-- La beta no incluye actualizaciones automáticas ni firma de código.
+Versión actual: `0.1.0-beta.1`.
+
+- Windows: NSIS x64.
+- macOS: DMG Intel x64.
+- GitHub Actions valida Linux, Windows y macOS.
+- Los tags `v*` generan los instaladores de la release.
+- La beta todavía no tiene firma de código ni actualizaciones automáticas.
