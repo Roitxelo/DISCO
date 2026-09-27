@@ -9,7 +9,7 @@ DISCO nació para juntar en una sola app varias cosas que acababa haciendo por s
 
 Ahora mismo está en beta, pero ya se puede usar de principio a fin en **Windows x64** y **macOS Intel**.
 
-> Versión actual: `0.1.0-beta.1` · Motor de análisis: **v3.2**
+> Versión actual: `0.1.0-beta.2` · Motor de análisis: **v3.2**
 
 
 ## Un vistazo a DISCO
@@ -23,7 +23,7 @@ Ahora mismo está en beta, pero ya se puede usar de principio a fin en **Windows
 
 La forma más sencilla de probar DISCO es desde la última release:
 
-**[Descargar DISCO 0.1.0-beta.1](https://github.com/Roitxelo/DISCO/releases/tag/v0.1.0-beta.1)**
+**[Descargar DISCO 0.1.0-beta.2](https://github.com/Roitxelo/DISCO/releases/tag/v0.1.0-beta.2)**
 
 - **Windows x64** → instalador `.exe`
 - **macOS Intel x64** → `.dmg`
