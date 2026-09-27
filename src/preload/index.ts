@@ -25,7 +25,7 @@ import type {
 
 contextBridge.exposeInMainWorld('disco', {
   platform: process.platform,
-  version: '0.1.0',
+  version: '0.1.0-beta.2',
   analyzeUrl: (url: string): Promise<AnalyzeResult> => ipcRenderer.invoke('media:analyze', url),
   selectFolder: (): Promise<string | null> => ipcRenderer.invoke('folder:select'),
   downloadAudio: (request: DownloadRequest): Promise<DownloadResult> =>
