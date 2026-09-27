@@ -24,7 +24,7 @@ Esta beta está centrada en seguridad, distribución y mantenimiento. No cambia 
 - CI verde en Linux x64, Windows x64 y macOS Intel x64.
 - Workflow manual de instaladores validado en Windows y macOS.
 - Smoke test manual completo en macOS Intel con FFmpeg externalizado.
-- Windows queda pendiente de smoke test manual antes de crear el tag definitivo.
+- Smoke test manual completo en Windows x64 con FFmpeg externalizado.
 
 ### Sigue pendiente
 
