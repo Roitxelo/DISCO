@@ -119,13 +119,33 @@ function createWindow(): void {
 
   window.once('ready-to-show', () => window.show())
 
+  const trustedRendererUrl = is.dev && process.env.ELECTRON_RENDERER_URL
+    ? new URL(process.env.ELECTRON_RENDERER_URL)
+    : null
+
+  window.webContents.on('will-navigate', (event, targetUrl) => {
+    const target = new URL(targetUrl)
+    const trusted = trustedRendererUrl
+      ? target.origin === trustedRendererUrl.origin
+      : target.protocol === 'file:'
+
+    if (!trusted) event.preventDefault()
+  })
+
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url)
+    try {
+      const target = new URL(url)
+      if (target.protocol === 'https:' || target.protocol === 'http:') {
+        void shell.openExternal(target.href)
+      }
+    } catch {
+      // Las URLs no válidas se descartan.
+    }
     return { action: 'deny' }
   })
 
-  if (is.dev && process.env.ELECTRON_RENDERER_URL) {
-    void window.loadURL(process.env.ELECTRON_RENDERER_URL)
+  if (trustedRendererUrl) {
+    void window.loadURL(trustedRendererUrl.href)
   } else {
     void window.loadFile(join(__dirname, '../renderer/index.html'))
   }
