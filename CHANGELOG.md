@@ -1,5 +1,38 @@
 # Historial de cambios
 
+## 0.1.0-beta.2 — 2026-09-27
+
+Esta beta está centrada en seguridad, distribución y mantenimiento. No cambia el flujo principal de DISCO, pero deja la aplicación bastante mejor preparada para compartirla.
+
+### Cambios importantes
+
+- Electron actualizado y validado con `npm audit` limpio.
+- Navegación externa bloqueada dentro de la ventana principal.
+- Permisos web innecesarios denegados.
+- GitHub Actions fijadas por commit SHA.
+- Gitleaks revisa todo el historial Git.
+- Dependabot vigila npm y Actions.
+- Las releases generan `SHA256SUMS.txt` y un SBOM CycloneDX.
+- FFmpeg deja de formar parte del instalador.
+- FFmpeg se descarga bajo demanda desde una release upstream conocida y se verifica por SHA-256.
+- yt-dlp mantiene descarga y verificación desde su release oficial.
+- Documentación nueva para desarrollo, distribución y revisión de seguridad.
+- Eliminada del material público una captura que mostraba una ruta local.
+
+### Validación
+
+- CI verde en Linux x64, Windows x64 y macOS Intel x64.
+- Workflow manual de instaladores validado en Windows y macOS.
+- Smoke test manual completo en macOS Intel con FFmpeg externalizado.
+- Windows queda pendiente de smoke test manual antes de crear el tag definitivo.
+
+### Sigue pendiente
+
+- firma Authenticode en Windows;
+- firma y notarización en macOS;
+- soporte validado para Apple Silicon;
+- actualizaciones automáticas.
+
 ## 0.1.0-beta.1 — 2026-09-26
 
 Primera beta de DISCO que considero suficientemente cerrada como para compartirla fuera del entorno de desarrollo.
