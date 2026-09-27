@@ -118,6 +118,15 @@ jobs:
         with:
           path: release-assets
 
+      - name: Generar checksums
+        shell: bash
+        run: |
+          sha256sum \
+            release-assets/DISCO-Windows-x64/*.exe \
+            release-assets/DISCO-macOS-Intel-x64/*.dmg \
+            | sed 's#release-assets/DISCO-Windows-x64/##; s#release-assets/DISCO-macOS-Intel-x64/##' \
+            > SHA256SUMS.txt
+
       - name: Publicar release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -130,8 +139,9 @@ jobs:
 
           gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
-            release-assets/DISCO-Windows-x64/* \
-            release-assets/DISCO-macOS-Intel-x64/* \
+            release-assets/DISCO-Windows-x64/*.exe \
+            release-assets/DISCO-macOS-Intel-x64/*.dmg \
+            SHA256SUMS.txt \
             --title "DISCO ${GITHUB_REF_NAME}" \
             --generate-notes \
             "${extra_flags[@]}"
