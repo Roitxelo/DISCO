@@ -2,9 +2,9 @@
 
 Si encuentras un problema de seguridad en DISCO, evita publicar detalles explotables en un Issue.
 
-Cuando el repositorio sea público, la vía preferida será **GitHub Private vulnerability reporting** desde la pestaña **Security**. Así se puede describir el problema sin hacerlo visible para todo el mundo.
+La vía preferida es **GitHub Private vulnerability reporting** desde la pestaña **Security**, si está disponible. Así se puede describir el problema sin hacerlo visible para todo el mundo.
 
-Si esa opción todavía no aparece, abre un Issue indicando únicamente que has encontrado un posible problema de seguridad y que necesitas un canal privado. No incluyas pasos de explotación, credenciales, datos personales ni archivos sensibles.
+Si esa opción no aparece, abre un Issue indicando únicamente que has encontrado un posible problema de seguridad y que necesitas un canal privado. No incluyas pasos de explotación, credenciales, datos personales ni archivos sensibles.
 
 ## Qué información ayuda
 
