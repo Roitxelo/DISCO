@@ -1,8 +1,13 @@
 Copyright (c) 2026 Roi Blanco Lage. All rights reserved.
 
-This repository and its contents are provided for evaluation and private beta
-testing only. No permission is granted to copy, modify, redistribute, sublicense,
-sell, or create derivative works from the source code except with the prior
-written authorization of the copyright holder.
+DISCO is source-available, but it is not open source.
 
-Third-party components remain subject to their respective licenses and notices.
+The source code in this repository is published so the project can be inspected
+and evaluated. Official compiled releases may be downloaded and used for
+personal, non-commercial evaluation and testing.
+
+No permission is granted to copy, modify, redistribute, sublicense, sell,
+publish derivative versions, or create and distribute forks of the DISCO source
+code without prior written authorization from the copyright holder.
+
+Third-party components remain subject to their own licenses and notices.
