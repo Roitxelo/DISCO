@@ -1,8 +1,8 @@
-# Revisión de seguridad previa a publicación
+# Revisión de seguridad de 0.1.0-beta.2
 
 Fecha de revisión: **27 de septiembre de 2026**
 
-Esta revisión se hizo antes de plantear la publicación del repositorio. No sustituye una auditoría externa, pero deja documentado qué se ha mirado, qué se ha corregido y qué sigue pendiente.
+Esta revisión deja documentadas las comprobaciones hechas antes de publicar la beta.2. No sustituye una auditoría externa, pero sí marca una base clara de seguridad y mantenimiento para el proyecto.
 
 ## Alcance
 
@@ -10,6 +10,7 @@ Se revisaron:
 
 - archivos versionados;
 - patrones de secretos y rutas personales;
+- historial Git;
 - configuración de Electron;
 - frontera renderer / preload / main;
 - IPC y operaciones de archivos;
@@ -18,14 +19,13 @@ Se revisaron:
 - GitHub Actions;
 - dependencias npm;
 - proceso de release;
-- licencias de terceros;
-- metadatos del historial Git.
+- licencias y procedencia de herramientas externas.
 
-## Estado actual del árbol
+## Estado del árbol
 
-En el árbol actual no se encontraron:
+No se encontraron:
 
-- archivos `.env`;
+- archivos `.env` versionados;
 - tokens o API keys;
 - contraseñas incrustadas;
 - claves privadas;
@@ -33,111 +33,77 @@ En el árbol actual no se encontraron:
 - `dist/`;
 - `node_modules/`;
 - informes locales de análisis;
-- rutas `/Users/<usuario>/...` o `C:\Users\<usuario>\...` en archivos de texto.
+- rutas personales en archivos de texto del snapshot público.
 
-La captura de Descarga que mostraba una ruta local se retiró del árbol público previsto.
+Gitleaks forma parte del CI y revisa todo el historial Git disponible del repositorio.
 
-## Endurecimiento aplicado
+## Electron
 
-### Electron
-
-DISCO ya utilizaba:
+DISCO utiliza:
 
 - `sandbox: true`;
 - `contextIsolation: true`;
 - `nodeIntegration: false`;
+- `webSecurity: true`;
+- bloqueo de contenido inseguro;
 - CSP sin scripts inline;
 - renderer sin acceso directo a Node.
 
-Durante esta revisión se añadió:
+También se bloquea la navegación de la ventana principal fuera del renderer esperado y las aperturas externas solo aceptan `http:` y `https:`.
 
-- bloqueo de navegación de la ventana principal fuera del renderer esperado;
-- apertura externa únicamente para `http:` y `https:`.
+Los permisos web que DISCO no necesita se deniegan.
 
-Esto evita que una navegación accidental a contenido remoto herede la API de preload.
+## Procesos externos
 
-### Procesos externos
+No se construyen comandos shell concatenando texto del usuario.
 
-No se usa `exec` con comandos construidos a partir de texto del usuario.
-
-FFmpeg se ejecuta con `execFile` y arrays de argumentos. yt-dlp se ejecuta mediante `execFile`/`spawn` con argumentos separados. Ambos binarios externos se obtienen fuera del instalador y se verifican antes de ejecutarse.
-
-Las URLs de descarga se restringen a HTTPS y hosts explícitos de YouTube.
+FFmpeg se ejecuta con `execFile` y arrays de argumentos. yt-dlp se ejecuta mediante `execFile`/`spawn`, también con argumentos separados.
 
 ### yt-dlp
 
-El binario se obtiene desde la release oficial de GitHub y el archivo descargado se compara con el digest SHA-256 publicado en la release antes de instalarlo.
+Se descarga desde su release oficial de GitHub y se verifica el SHA-256 publicado antes de instalarlo.
 
-Sigue existiendo una dependencia de confianza en GitHub y en la cuenta upstream de yt-dlp. La verificación protege frente a corrupción o sustitución en tránsito, pero no equivale a fijar una versión conocida dentro de DISCO.
+### FFmpeg
 
-### GitHub Actions
+`ffmpeg-static` ya no forma parte del instalador.
 
-Se endureció el CI para:
+DISCO descarga bajo demanda una build upstream conocida, fijada por plataforma, y comprueba su SHA-256 antes de ejecutarla. El binario se guarda dentro de los datos locales de la aplicación.
 
-- fijar las acciones externas por commit SHA;
-- no persistir credenciales de checkout;
-- usar `contents: read` por defecto;
-- dar `contents: write` únicamente al job que crea una release;
-- bloquear cualquier advisory que haga fallar `npm audit`;
-- escanear todo el historial con Gitleaks;
-- mantener dependencias con Dependabot.
+## GitHub Actions
 
-### Releases
+El CI:
 
-Las nuevas releases generan un `SHA256SUMS.txt` y publican como archivos principales solo los instaladores destinados al usuario y sus checksums.
+- fija acciones externas por commit SHA;
+- no persiste credenciales de checkout;
+- usa permisos de solo lectura por defecto;
+- concede escritura únicamente al job que publica una release;
+- ejecuta `npm audit`;
+- revisa el historial con Gitleaks;
+- construye en Linux, Windows y macOS;
+- usa Dependabot para npm y GitHub Actions.
 
-## Hallazgo de privacidad en el historial Git — pendiente
+## Releases
 
-El repositorio privado actual contiene **95 commits** cuyo autor utiliza una dirección de Gmail personal. En 91 commits también aparece como committer.
+Las releases generan:
 
-Aunque el árbol actual esté limpio, esos metadatos forman parte del historial Git.
+- instalador Windows x64;
+- DMG macOS Intel x64;
+- `SHA256SUMS.txt`;
+- `SBOM.cdx.json`.
 
-Además, los Pull Requests ya creados conservan referencias a commits antiguos. Por eso una simple reescritura de `main` no garantiza que todos los objetos antiguos dejen de ser accesibles si este mismo repositorio cambia a público.
+La beta.2 se probó manualmente en Windows x64 y macOS Intel después de externalizar FFmpeg.
 
-### Recomendación
+## Pendiente
 
-La opción más limpia antes de publicar es mantener este repositorio como archivo privado de desarrollo y crear el repositorio público desde un historial limpio, usando desde el primer commit una dirección `users.noreply.github.com`.
+La siguiente capa de madurez no está en el código, sino en la confianza del sistema operativo:
 
-Si se decide publicar este mismo repositorio, habría que reescribir ramas y tags y aceptar que referencias históricas asociadas a PR pueden seguir existiendo en GitHub.
+- Windows todavía no tiene firma Authenticode.
+- macOS todavía no tiene Developer ID ni notarización.
+- Apple Silicon todavía no está validado.
+- No hay actualizaciones automáticas.
 
-## FFmpeg — estrategia cerrada para esta beta
+## Conclusión
 
-`ffmpeg-static` se retiró de las dependencias de producción y del empaquetado.
+La beta.2 parte de una base razonable para distribución pública: aislamiento de Electron, dependencias auditadas, escaneo de secretos, builds reproducibles y herramientas externas verificadas antes de ejecutarse.
 
-DISCO descarga bajo demanda la misma familia de binarios que utilizaba anteriormente, directamente desde la release upstream `b6.1.1`, y verifica un SHA-256 fijado por plataforma. El instalador de DISCO deja de redistribuir FFmpeg.
-
-Esto elimina el principal bloqueo de distribución que se había identificado en la revisión. FFmpeg sigue siendo software de terceros sujeto a su propia licencia.
-
-## Firma de instaladores — pendiente
-
-- Windows: sin Authenticode.
-- macOS: sin Developer ID / notarización.
-
-No impide una beta privada, pero sí afecta a confianza, advertencias de SmartScreen/Gatekeeper y a cómo debería distribuirse una versión pública.
-
-## Protección de main — pendiente al hacer público el repo
-
-Mientras el repositorio siga privado, el plan actual no permite consultar/configurar aquí los rulesets avanzados.
-
-Al hacerlo público conviene activar una regla para `main` que, como mínimo:
-
-- exija Pull Request;
-- exija que el CI pase;
-- bloquee force-push;
-- bloquee borrado de la rama;
-- deje los tags publicados como referencias que no se reescriben.
-
-## Private vulnerability reporting — pendiente
-
-Cuando el repositorio sea público, activar **Private vulnerability reporting** en GitHub Security permite que alguien comunique una vulnerabilidad sin publicarla como Issue.
-
-## Conclusión práctica
-
-El código está en una base razonablemente fuerte para una beta de escritorio: aislamiento de Electron, CSP, sin shell concatenada, dependencias auditadas y CI multiplataforma.
-
-Antes de poner **instaladores** a disposición pública quedan dos tareas que considero importantes:
-
-1. resolver el historial con correo personal creando un historial público limpio;
-2. generar y probar una nueva release con FFmpeg externalizado.
-
-La firma de código es el siguiente nivel de madurez, aunque puede hacerse después de una primera beta pública si se explican claramente las advertencias.
+Si el proyecto crece, esta revisión debería repetirse periódicamente y ampliarse con pruebas específicas de IPC, análisis estático y firma de releases.
