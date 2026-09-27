@@ -42,7 +42,7 @@ jobs:
           exit 1
 
       - name: Comprobar vulnerabilidades altas
-        run: npm audit --audit-level=high
+        run: npm audit
 
   secretos:
     name: Buscar secretos en el historial
