@@ -2,7 +2,6 @@ name: Construir instaladores
 
 on:
   push:
-    branches: [analysis-v3]
     tags:
       - "v*"
   workflow_dispatch:
