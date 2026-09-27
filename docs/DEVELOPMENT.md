@@ -73,6 +73,7 @@ No debe importar `fs`, `child_process`, `electron` ni ninguna API de Node. Todo 
 | Quiero cambiar... | Archivo principal |
 | --- | --- |
 | Descargas / yt-dlp | `src/main/services/ytDlp.ts` |
+| Descarga/verificación de FFmpeg | `src/main/services/ffmpeg.ts` |
 | Análisis BPM/tono | `src/main/services/audioAnalysisV3.ts` |
 | Comparación v2/v3 | `src/main/services/analysisComparison.ts` |
 | Importación local | `src/main/services/localImport.ts` |
@@ -142,9 +143,11 @@ En el primer uso que lo necesita, DISCO consulta la release oficial de yt-dlp en
 
 ### FFmpeg
 
-Actualmente llega mediante `ffmpeg-static` y se empaqueta con la aplicación.
+Ya no forma parte del instalador.
 
-Esto tiene implicaciones de licencia importantes. Antes de distribuir instaladores públicamente, revisa [DISTRIBUTION.md](DISTRIBUTION.md) y [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+`src/main/services/ffmpeg.ts` descarga bajo demanda una build conocida de FFmpeg desde la release upstream `b6.1.1`, verifica un SHA-256 fijado por plataforma y guarda el ejecutable en `app.getPath('userData')/bin`.
+
+El cambio evita redistribuir `ffmpeg-static` dentro de DISCO y hace explícita la frontera entre la aplicación y la herramienta externa.
 
 ## Ejecutar en desarrollo
 

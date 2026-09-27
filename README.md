@@ -59,7 +59,7 @@ DISCO funciona de forma local.
 
 No hay cuenta, servidor ni telemetría. La colección, las rutas, las preferencias y el historial se guardan en tu propio equipo.
 
-La primera vez que necesitas descargar desde YouTube, DISCO obtiene el binario oficial de `yt-dlp` y comprueba su SHA-256 antes de usarlo. FFmpeg va incluido con la aplicación.
+La primera vez que una función necesita `yt-dlp` o FFmpeg, DISCO descarga el binario correspondiente desde su release upstream y comprueba su SHA-256 antes de usarlo. Ninguno de los dos binarios se redistribuye dentro del instalador de DISCO.
 
 ## Estado de las plataformas
 

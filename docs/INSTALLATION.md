@@ -53,12 +53,12 @@ No.
 
 Los instaladores ya llevan lo necesario para ejecutar DISCO:
 
-- FFmpeg va incluido;
+- FFmpeg se descarga automáticamente la primera vez que hace falta;
 - yt-dlp se descarga automáticamente la primera vez que hace falta;
 - no necesitas Node.js;
 - no necesitas npm.
 
-Cuando DISCO descarga yt-dlp, usa la publicación oficial correspondiente al sistema y comprueba el hash SHA-256 antes de instalarlo.
+Cuando DISCO descarga yt-dlp o FFmpeg, usa una release upstream conocida y comprueba el hash SHA-256 antes de instalar el binario dentro de los datos locales de la aplicación.
 
 ## Actualizar DISCO
 

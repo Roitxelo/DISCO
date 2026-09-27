@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { stat } from 'node:fs/promises'
 import Meyda from 'meyda'
-import { getFfmpegPath } from './ytDlp'
+import { getFfmpegPath } from './ffmpeg'
 import type { AudioAnalysis } from '../../shared/media'
 
 export const ANALYSIS_SAMPLE_RATE = 22_050
@@ -13,10 +13,11 @@ const MINOR_PROFILE = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69
 const CAMELOT_MAJOR = ['8B', '3B', '10B', '5B', '12B', '7B', '2B', '9B', '4B', '11B', '6B', '1B']
 const CAMELOT_MINOR = ['5A', '12A', '7A', '2A', '9A', '4A', '11A', '6A', '1A', '8A', '3A', '10A']
 
-export function decodeAudio(filePath: string): Promise<Float32Array> {
+export async function decodeAudio(filePath: string): Promise<Float32Array> {
+  const ffmpegPath = await getFfmpegPath()
   return new Promise((resolve, reject) => {
     execFile(
-      getFfmpegPath(),
+      ffmpegPath,
       [
         '-hide_banner',
         '-loglevel',

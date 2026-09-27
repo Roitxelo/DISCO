@@ -4,14 +4,15 @@ import { basename, extname, resolve } from 'node:path'
 import { stat } from 'node:fs/promises'
 import { AUDIO_FORMATS } from '../../shared/media'
 import { analyzeAudioV3 } from './audioAnalysisV3'
-import { getFfmpegPath } from './ytDlp'
+import { getFfmpegPath } from './ffmpeg'
 import { listHistory, saveHistoryEntry } from './history'
 import type { AudioFormat, LocalImportProgress } from '../../shared/media'
 
-function probeDuration(filePath: string): Promise<number> {
+async function probeDuration(filePath: string): Promise<number> {
+  const ffmpegPath = await getFfmpegPath()
   return new Promise((resolveDuration) => {
     execFile(
-      getFfmpegPath(),
+      ffmpegPath,
       ['-hide_banner', '-i', filePath],
       { encoding: 'utf8', windowsHide: true, timeout: 30_000, maxBuffer: 2 * 1024 * 1024 },
       (_error, _stdout, stderr) => {

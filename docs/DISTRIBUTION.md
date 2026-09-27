@@ -137,21 +137,15 @@ Para una distribución normal fuera de pruebas hace falta:
 
 Nunca subas certificados, claves privadas o contraseñas al repositorio.
 
-## FFmpeg: punto pendiente antes de abrir la descarga al público
+## FFmpeg
 
-DISCO empaqueta actualmente FFmpeg mediante `ffmpeg-static@5.3.0`. Esa versión utiliza la release binaria `b6.1.1`, basada en FFmpeg 6.1.1.
+FFmpeg ya no se incluye dentro del instalador de DISCO.
 
-El paquete `ffmpeg-static` declara licencia **GPL-3.0-or-later** y publica archivos de licencia separados para cada plataforma. FFmpeg, por su parte, explica que la licencia efectiva de una build depende de las opciones y componentes con los que se compile: una build puede ser LGPL o pasar a GPL.
+La aplicación descarga directamente una build conocida desde la release upstream `b6.1.1` la primera vez que la necesita. El binario se guarda en los datos locales de DISCO y se verifica contra un SHA-256 fijado para la plataforma antes de ejecutarlo.
 
-Por eso el siguiente paso no es adivinar la licencia por el nombre del paquete, sino verificar la licencia/configuración exacta de los binarios `darwin-x64` y `win32-x64` que estamos redistribuyendo y cumplir lo que corresponda.
+Con este modelo, nuestra GitHub Release distribuye DISCO, no el binario de FFmpeg. FFmpeg conserva su propia licencia y procedencia upstream.
 
-Como DISCO mantiene una licencia propietaria, no quiero dar por hecho que basta con mencionar FFmpeg en un README. Antes de hacer pública una release con el binario incluido hay que escoger una estrategia clara:
-
-1. verificar exactamente la build incluida y cumplir sus obligaciones de redistribución y código fuente; o
-2. cambiar a una build/configuración de FFmpeg compatible con el modelo de distribución que queramos; o
-3. dejar de incluir FFmpeg dentro del instalador y resolver su obtención de otra manera.
-
-Esto es un tema de licencias, no un fallo técnico. Merece cerrarse antes de distribuir públicamente los instaladores.
+Esto reduce bastante el problema de redistribución que teníamos con `ffmpeg-static`, aunque no convierte esta documentación en asesoramiento jurídico. Si en el futuro volvemos a empaquetar FFmpeg dentro del instalador, habrá que revisar de nuevo sus obligaciones de licencia.
 
 ## Release actual
 

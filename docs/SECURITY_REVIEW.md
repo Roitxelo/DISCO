@@ -60,7 +60,7 @@ Esto evita que una navegación accidental a contenido remoto herede la API de pr
 
 No se usa `exec` con comandos construidos a partir de texto del usuario.
 
-FFmpeg se ejecuta con `execFile` y arrays de argumentos. yt-dlp se ejecuta mediante `execFile`/`spawn` con argumentos separados.
+FFmpeg se ejecuta con `execFile` y arrays de argumentos. yt-dlp se ejecuta mediante `execFile`/`spawn` con argumentos separados. Ambos binarios externos se obtienen fuera del instalador y se verifican antes de ejecutarse.
 
 Las URLs de descarga se restringen a HTTPS y hosts explícitos de YouTube.
 
@@ -100,13 +100,13 @@ La opción más limpia antes de publicar es mantener este repositorio como archi
 
 Si se decide publicar este mismo repositorio, habría que reescribir ramas y tags y aceptar que referencias históricas asociadas a PR pueden seguir existiendo en GitHub.
 
-## Licencia de FFmpeg — pendiente antes de distribuir instaladores
+## FFmpeg — estrategia cerrada para esta beta
 
-`ffmpeg-static@5.3.0` apunta a la release binaria `b6.1.1`, basada en FFmpeg 6.1.1, y el paquete declara GPL-3.0-or-later.
+`ffmpeg-static` se retiró de las dependencias de producción y del empaquetado.
 
-La release publica archivos de licencia separados para las plataformas, pero durante esta revisión no se ha podido verificar todavía el contenido/configuración exacta de los binarios `darwin-x64` y `win32-x64`. FFmpeg puede ser LGPL o GPL según su configuración de compilación, así que este punto sigue abierto antes de una distribución binaria pública.
+DISCO descarga bajo demanda la misma familia de binarios que utilizaba anteriormente, directamente desde la release upstream `b6.1.1`, y verifica un SHA-256 fijado por plataforma. El instalador de DISCO deja de redistribuir FFmpeg.
 
-Esto está explicado con más detalle en [DISTRIBUTION.md](DISTRIBUTION.md).
+Esto elimina el principal bloqueo de distribución que se había identificado en la revisión. FFmpeg sigue siendo software de terceros sujeto a su propia licencia.
 
 ## Firma de instaladores — pendiente
 
@@ -138,6 +138,6 @@ El código está en una base razonablemente fuerte para una beta de escritorio: 
 Antes de poner **instaladores** a disposición pública quedan dos tareas que considero importantes:
 
 1. resolver el historial con correo personal creando un historial público limpio;
-2. cerrar la estrategia de licencia/distribución de FFmpeg.
+2. generar y probar una nueva release con FFmpeg externalizado.
 
 La firma de código es el siguiente nivel de madurez, aunque puede hacerse después de una primera beta pública si se explican claramente las advertencias.

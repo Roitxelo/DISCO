@@ -1,14 +1,15 @@
 import { execFile } from 'node:child_process'
 import { stat } from 'node:fs/promises'
-import { getFfmpegPath } from './ytDlp'
+import { getFfmpegPath } from './ffmpeg'
 
 export async function generateWaveform(filePath: string): Promise<string> {
   const file = await stat(filePath).catch(() => null)
   if (!file?.isFile()) throw new Error('No se encuentra el archivo de audio.')
 
+  const ffmpegPath = await getFfmpegPath()
   return new Promise((resolve, reject) => {
     execFile(
-      getFfmpegPath(),
+      ffmpegPath,
       [
         '-hide_banner',
         '-loglevel',
