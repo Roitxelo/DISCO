@@ -8,12 +8,12 @@ DISCO es una aplicación de escritorio para productores musicales. Reúne la des
 
 ## Descargar e instalar
 
-La beta se distribuye mediante instaladores generados con Electron Builder:
+La beta se distribuye desde [GitHub Releases](https://github.com/Roitxelo/DISCO/releases/tag/v0.1.0-beta.1):
 
 - Windows x64: instalador NSIS `.exe`.
 - macOS Intel x64: imagen `.dmg`.
 
-Consulta la [guía de instalación](docs/INSTALLATION.md) para los pasos y advertencias de cada sistema.
+Consulta la [guía de instalación](docs/INSTALLATION.md) para los pasos y advertencias de cada sistema. Los usuarios de los instaladores no necesitan Node.js, npm, FFmpeg ni yt-dlp instalados globalmente.
 
 ## Funciones
 
