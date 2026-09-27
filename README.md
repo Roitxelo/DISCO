@@ -1,5 +1,8 @@
 # DISCO
 
+[![Validar DISCO](https://github.com/Roitxelo/DISCO/actions/workflows/ci.yml/badge.svg)](https://github.com/Roitxelo/DISCO/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Roitxelo/DISCO?include_prereleases&label=release)](https://github.com/Roitxelo/DISCO/releases)
+
 **Descarga · Identifica · Samplea · Convierte · Organiza**
 
 DISCO nació para juntar en una sola app varias cosas que acababa haciendo por separado cuando trabajaba con música: descargar audio que puedo usar, identificar BPM y tonalidad, sacar un sample y dejarlo todo organizado para volver a encontrarlo después.
@@ -88,6 +91,12 @@ npm run dist:mac
 Los builds terminan en `dist/` y esa carpeta no se versiona.
 
 GitHub Actions también valida automáticamente el proyecto en Linux, Windows y macOS. Las releases etiquetadas con `v*` generan los instaladores de Windows y macOS.
+
+## Feedback y contribuciones
+
+Si pruebas DISCO y algo falla, abre un [Issue](https://github.com/Roitxelo/DISCO/issues). Hay plantillas separadas para bugs e ideas para que sea más fácil dar el contexto necesario.
+
+Si quieres proponer código, echa un vistazo a [CONTRIBUTING.md](CONTRIBUTING.md) antes de empezar. Para problemas de seguridad, sigue [SECURITY.md](SECURITY.md) y evita publicar detalles sensibles en abierto.
 
 ## Documentación
 
