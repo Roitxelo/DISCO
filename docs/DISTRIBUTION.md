@@ -30,13 +30,13 @@ Así quien lo recibe puede ver:
 ### Windows PowerShell
 
 ```powershell
-Get-FileHash .\DISCO-0.1.0-beta.1-win-x64.exe -Algorithm SHA256
+Get-FileHash .\DISCO-0.1.0-beta.2-win-x64.exe -Algorithm SHA256
 ```
 
 ### macOS
 
 ```bash
-shasum -a 256 DISCO-0.1.0-beta.1-mac-x64.dmg
+shasum -a 256 DISCO-0.1.0-beta.2-mac-x64.dmg
 ```
 
 El resultado debe coincidir con `SHA256SUMS.txt` de la misma release.
@@ -149,6 +149,4 @@ Esto reduce bastante el problema de redistribución que teníamos con `ffmpeg-st
 
 ## Release actual
 
-`v0.1.0-beta.1` se creó durante la beta privada.
-
-Después de la auditoría de seguridad no se debe reutilizar ese tag para los siguientes cambios. La primera versión que incorpore el endurecimiento de esta revisión deberá llevar un tag nuevo.
+`v0.1.0-beta.1` queda como la primera beta privada. `v0.1.0-beta.2` será la primera release que incorpore el endurecimiento de seguridad, checksums, SBOM y FFmpeg externalizado.
