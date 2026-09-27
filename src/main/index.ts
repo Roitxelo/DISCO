@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { basename, dirname, extname, join } from 'node:path'
 import { rename, rm, stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
+import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../shared/media'
@@ -119,15 +120,16 @@ function createWindow(): void {
 
   window.once('ready-to-show', () => window.show())
 
+  const rendererFilePath = join(__dirname, '../renderer/index.html')
   const trustedRendererUrl = is.dev && process.env.ELECTRON_RENDERER_URL
     ? new URL(process.env.ELECTRON_RENDERER_URL)
-    : null
+    : pathToFileURL(rendererFilePath)
 
   window.webContents.on('will-navigate', (event, targetUrl) => {
     const target = new URL(targetUrl)
-    const trusted = trustedRendererUrl
+    const trusted = is.dev
       ? target.origin === trustedRendererUrl.origin
-      : target.protocol === 'file:'
+      : target.protocol === 'file:' && target.pathname === trustedRendererUrl.pathname
 
     if (!trusted) event.preventDefault()
   })
@@ -144,10 +146,10 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  if (trustedRendererUrl) {
+  if (is.dev && process.env.ELECTRON_RENDERER_URL) {
     void window.loadURL(trustedRendererUrl.href)
   } else {
-    void window.loadFile(join(__dirname, '../renderer/index.html'))
+    void window.loadFile(rendererFilePath)
   }
 }
 
