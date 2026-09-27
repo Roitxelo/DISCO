@@ -102,9 +102,9 @@ Si se decide publicar este mismo repositorio, habría que reescribir ramas y tag
 
 ## Licencia de FFmpeg — pendiente antes de distribuir instaladores
 
-`ffmpeg-static@5.3.0` declara GPL-3.0-or-later.
+`ffmpeg-static@5.3.0` apunta a la release binaria `b6.1.1`, basada en FFmpeg 6.1.1, y el paquete declara GPL-3.0-or-later.
 
-FFmpeg puede ser LGPL o GPL según su configuración de compilación. La build concreta incluida debe revisarse antes de hacer pública la distribución binaria de una aplicación propietaria.
+La release publica archivos de licencia separados para las plataformas, pero durante esta revisión no se ha podido verificar todavía el contenido/configuración exacta de los binarios `darwin-x64` y `win32-x64`. FFmpeg puede ser LGPL o GPL según su configuración de compilación, así que este punto sigue abierto antes de una distribución binaria pública.
 
 Esto está explicado con más detalle en [DISTRIBUTION.md](DISTRIBUTION.md).
 

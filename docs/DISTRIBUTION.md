@@ -9,6 +9,7 @@ Para una release normal:
 - Windows x64 → `DISCO-<version>-win-x64.exe`
 - macOS Intel x64 → `DISCO-<version>-mac-x64.dmg`
 - verificación → `SHA256SUMS.txt`
+- inventario de dependencias → `SBOM.cdx.json`
 
 Los `.blockmap` y `latest*.yml` se generan porque electron-builder los utiliza para escenarios de actualización, pero mientras DISCO no tenga auto-updater no hace falta publicarlos como archivos principales de la release.
 
@@ -86,8 +87,9 @@ El workflow:
 2. ejecuta `npm audit`;
 3. construye Windows x64;
 4. construye macOS Intel x64;
-5. genera SHA-256;
-6. crea la GitHub Release.
+5. genera un SBOM CycloneDX;
+6. genera SHA-256 de los instaladores;
+7. crea la GitHub Release.
 
 Si el tag contiene `-beta`, `-alpha` o `-rc`, se publica como prerelease.
 
@@ -137,9 +139,11 @@ Nunca subas certificados, claves privadas o contraseñas al repositorio.
 
 ## FFmpeg: punto pendiente antes de abrir la descarga al público
 
-DISCO empaqueta actualmente FFmpeg mediante `ffmpeg-static@5.3.0`.
+DISCO empaqueta actualmente FFmpeg mediante `ffmpeg-static@5.3.0`. Esa versión utiliza la release binaria `b6.1.1`, basada en FFmpeg 6.1.1.
 
-Ese paquete declara licencia **GPL-3.0-or-later** y distribuye binarios estáticos de FFmpeg. La licencia exacta de un binario de FFmpeg depende además de cómo se haya compilado.
+El paquete `ffmpeg-static` declara licencia **GPL-3.0-or-later** y publica archivos de licencia separados para cada plataforma. FFmpeg, por su parte, explica que la licencia efectiva de una build depende de las opciones y componentes con los que se compile: una build puede ser LGPL o pasar a GPL.
+
+Por eso el siguiente paso no es adivinar la licencia por el nombre del paquete, sino verificar la licencia/configuración exacta de los binarios `darwin-x64` y `win32-x64` que estamos redistribuyendo y cumplir lo que corresponda.
 
 Como DISCO mantiene una licencia propietaria, no quiero dar por hecho que basta con mencionar FFmpeg en un README. Antes de hacer pública una release con el binario incluido hay que escoger una estrategia clara:
 

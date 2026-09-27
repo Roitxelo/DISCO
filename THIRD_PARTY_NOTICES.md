@@ -14,9 +14,9 @@ Entre las dependencias principales están:
 
 ## FFmpeg
 
-La dependencia actual es `ffmpeg-static@5.3.0`.
+La dependencia actual es `ffmpeg-static@5.3.0`, cuya configuración apunta a la release binaria `b6.1.1` (FFmpeg 6.1.1).
 
-El paquete `ffmpeg-static` declara licencia **GPL-3.0-or-later** y descarga binarios estáticos de FFmpeg. FFmpeg, por su parte, puede quedar bajo LGPL o GPL dependiendo de las opciones y componentes utilizados al compilar cada binario.
+El paquete `ffmpeg-static` declara licencia **GPL-3.0-or-later** y la release incluye archivos de licencia/README por plataforma. FFmpeg puede quedar bajo LGPL o GPL dependiendo de cómo se compile cada binario.
 
 Por eso no conviene asumir que una mención en este archivo resuelve por sí sola las obligaciones de redistribución.
 
