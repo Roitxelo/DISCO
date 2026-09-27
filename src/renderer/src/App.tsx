@@ -71,6 +71,7 @@ function defaultSampleFormat(sourceFormat: AudioFormat): SampleFormat {
 
 function App(): React.JSX.Element {
   const [settings, setSettings] = useState<AppSettings>(loadSettings)
+  const [appVersion, setAppVersion] = useState('—')
   const [view, setView] = useState<AppView>('download')
   const [url, setUrl] = useState('')
   const [media, setMedia] = useState<MediaInfo | null>(null)
@@ -183,6 +184,7 @@ function App(): React.JSX.Element {
   )
 
   useEffect(() => {
+    void window.disco.getVersion().then(setAppVersion)
     void window.disco.listHistory().then((result) => {
       if (result.ok) setHistory(result.entries)
       else setHistoryError(result.error)
@@ -1013,7 +1015,7 @@ function App(): React.JSX.Element {
         currentDetail={currentStep.detail}
         currentActionLabel={!currentEntry ? 'Nueva descarga' : currentEntry.analysisReview === 'pending' ? 'Continuar' : 'Samplear'}
         canFinishCurrentWork={Boolean(currentEntry && currentEntry.analysisReview !== 'pending')}
-        version={window.disco.version}
+        version={appVersion}
         onNavigate={setView}
         onContinueCurrentWork={() => {
           if (currentEntry && currentStep.target === 'identify') openIdentification(currentEntry)
@@ -1294,7 +1296,7 @@ function App(): React.JSX.Element {
           )}
         </section>}
 
-        {view === 'settings' && <SettingsView settings={settings} directory={directory} version={window.disco.version} comparisonRunning={comparisonRunning} comparisonProgress={comparisonProgress} comparisonSummary={comparisonSummary} comparisonReportPath={comparisonReportPath} comparisonError={comparisonError} onRunComparison={() => void runAnalysisComparison()} onRevealComparisonReport={() => comparisonReportPath && window.disco.revealFile(comparisonReportPath)} onChange={setSettings} onSelectFolder={() => void selectFolder()} onDownloadFormatChange={(value) => { setSettings((current) => ({ ...current, downloadFormat: value })); setFormat(value) }} />}
+        {view === 'settings' && <SettingsView settings={settings} directory={directory} version={appVersion} comparisonRunning={comparisonRunning} comparisonProgress={comparisonProgress} comparisonSummary={comparisonSummary} comparisonReportPath={comparisonReportPath} comparisonError={comparisonError} onRunComparison={() => void runAnalysisComparison()} onRevealComparisonReport={() => comparisonReportPath && window.disco.revealFile(comparisonReportPath)} onChange={setSettings} onSelectFolder={() => void selectFolder()} onDownloadFormatChange={(value) => { setSettings((current) => ({ ...current, downloadFormat: value })); setFormat(value) }} />}
 
         {view === 'organize' && <OrganizeView entries={collectionEntries} visibleEntries={organizedEntries} availableTags={availableTags} search={organizeSearch} favoritesOnly={organizeFavoritesOnly} status={organizeStatus} tag={organizeTag} tagDrafts={tagDrafts} error={historyError} onSearchChange={setOrganizeSearch} onFavoritesChange={setOrganizeFavoritesOnly} onStatusChange={setOrganizeStatus} onTagChange={setOrganizeTag} onTagDraftChange={(id, value) => setTagDrafts((current) => ({ ...current, [id]: value }))} onClear={() => { setOrganizeSearch(''); setOrganizeFavoritesOnly(false); setOrganizeStatus('all'); setOrganizeTag('all') }} onUpdate={(id, update) => void updateOrganization(id, update)} onRemoveTag={(entry, tag) => void removeTag(entry, tag)} onAddTag={(entry, event) => { event.preventDefault(); void addTag(entry) }} />}
       </section>

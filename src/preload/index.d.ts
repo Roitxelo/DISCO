@@ -28,7 +28,7 @@ declare global {
   interface Window {
     disco: {
       platform: NodeJS.Platform
-      version: string
+      getVersion: () => Promise<string>
       analyzeUrl: (url: string) => Promise<AnalyzeResult>
       selectFolder: () => Promise<string | null>
       downloadAudio: (request: DownloadRequest) => Promise<DownloadResult>
