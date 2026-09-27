@@ -59,4 +59,4 @@ Algunas reglas que sí quiero conservar:
 
 Que el repositorio sea visible no significa que DISCO sea open source.
 
-Las contribuciones aceptadas pasan a formar parte del proyecto bajo la licencia actual del repositorio. Si esto te afecta o necesitas otro acuerdo, coméntalo antes de enviar código.
+Si envías una contribución, asegúrate de que tienes derecho a compartir ese código y de que aceptas que, si se integra, pase a formar parte de DISCO bajo los términos actuales del proyecto. Si necesitas otro acuerdo, coméntalo antes de enviar código.
