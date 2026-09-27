@@ -1,14 +1,14 @@
-# Instalar DISCO 0.1.0-beta.1
+# Instalar DISCO 0.1.0-beta.2
 
 La beta actual está probada en **Windows x64** y **macOS Intel x64**.
 
-Los instaladores están en la [release v0.1.0-beta.1](https://github.com/Roitxelo/DISCO/releases/tag/v0.1.0-beta.1).
+Los instaladores están en la [release v0.1.0-beta.2](https://github.com/Roitxelo/DISCO/releases/tag/v0.1.0-beta.2).
 
 ## Windows x64
 
 Descarga:
 
-`DISCO-0.1.0-beta.1-win-x64.exe`
+`DISCO-0.1.0-beta.2-win-x64.exe`
 
 Después:
 
@@ -27,7 +27,7 @@ Comprueba que lo has descargado desde la release oficial del repositorio antes d
 
 Descarga:
 
-`DISCO-0.1.0-beta.1-mac-x64.dmg`
+`DISCO-0.1.0-beta.2-mac-x64.dmg`
 
 Después:
 
