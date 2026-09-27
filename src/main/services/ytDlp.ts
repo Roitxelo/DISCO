@@ -73,7 +73,12 @@ async function downloadBinary(targetPath: string): Promise<void> {
     throw new Error('No se encontró un binario verificable de yt-dlp para este equipo.')
   }
 
-  const binaryResponse = await fetch(asset.browser_download_url, {
+  const assetUrl = new URL(asset.browser_download_url)
+  if (assetUrl.protocol !== 'https:' || assetUrl.hostname !== 'github.com') {
+    throw new Error('La URL del binario de yt-dlp no es de confianza.')
+  }
+
+  const binaryResponse = await fetch(assetUrl, {
     headers: { 'User-Agent': 'DISCO-desktop' }
   })
   if (!binaryResponse.ok || !binaryResponse.body) {
