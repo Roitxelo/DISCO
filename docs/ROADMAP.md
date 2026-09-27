@@ -15,12 +15,13 @@
 - DMG macOS Intel x64 probado.
 - Electron 44.4.5 con `npm audit` sin vulnerabilidades conocidas al cerrar la beta.
 
-## Cierre de beta
+## Cierre de beta — completado
 
-- Reforzar la validación multiplataforma mediante GitHub Actions.
-- Revisar documentación y repositorio para publicación.
-- Fusionar `analysis-v3` en `main`.
-- Publicar `v0.1.0-beta.1` en GitHub Releases.
+- Validación multiplataforma mediante GitHub Actions.
+- Revisión de documentación y repositorio.
+- Integración de la beta en `main`.
+- Publicación de `v0.1.0-beta.1` en GitHub Releases.
+- Generación automática de instaladores Windows x64 y macOS Intel x64 por tag.
 
 ## Después de la beta
 
@@ -44,5 +45,5 @@
 - Firma digital para Windows.
 - Firma y notarización para macOS.
 - Build y validación de macOS Apple Silicon arm64.
-- Automatizar la creación de artefactos de release cuando el flujo esté estabilizado.
+- Ampliar la automatización de releases con firma y notarización cuando estén disponibles.
 - Actualizaciones automáticas cuando exista infraestructura estable.
