@@ -18,9 +18,6 @@ Ahora mismo está en beta, pero ya se puede usar de principio a fin en **Windows
 
 *Identifica: análisis con BPM, tonalidad, Camelot y revisión manual.*
 
-<img src="docs/assets/descarga.webp" alt="Pantalla Descarga de DISCO con un tema preparado para convertir y analizar" width="100%">
-
-*Descarga: trae el audio, elige formato y deja preparado el análisis.*
 
 ## Descargar
 
@@ -116,6 +113,9 @@ Si quieres entrar un poco más en detalle:
 - [Instalación](docs/INSTALLATION.md)
 - [Guía de uso](docs/USER_GUIDE.md)
 - [Arquitectura](docs/ARCHITECTURE.md)
+- [Desarrollo y mapa del código](docs/DEVELOPMENT.md)
+- [Distribución y releases](docs/DISTRIBUTION.md)
+- [Revisión de seguridad](docs/SECURITY_REVIEW.md)
 - [Motor de análisis v3.2](docs/ANALYSIS_V3.md)
 - [Problemas conocidos](docs/KNOWN_ISSUES.md)
 - [Roadmap](docs/ROADMAP.md)

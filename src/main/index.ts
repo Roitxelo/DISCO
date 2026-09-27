@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto'
 import { basename, dirname, extname, join } from 'node:path'
 import { rename, rm, stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
-import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
+import { pathToFileURL } from 'node:url'
+import { app, BrowserWindow, dialog, ipcMain, protocol, session, shell } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { AUDIO_FORMATS, PROJECT_STATUSES, SAMPLE_FORMATS } from '../shared/media'
 import { downloadAudio, getMediaInfo } from './services/ytDlp'
@@ -113,27 +114,60 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: true,
+      allowRunningInsecureContent: false
     }
   })
 
   window.once('ready-to-show', () => window.show())
 
+  const rendererFilePath = join(__dirname, '../renderer/index.html')
+  const trustedRendererUrl = is.dev && process.env.ELECTRON_RENDERER_URL
+    ? new URL(process.env.ELECTRON_RENDERER_URL)
+    : pathToFileURL(rendererFilePath)
+
+  window.webContents.on('will-navigate', (event, targetUrl) => {
+    const target = new URL(targetUrl)
+    const trusted = is.dev
+      ? target.origin === trustedRendererUrl.origin
+      : target.protocol === 'file:' && target.pathname === trustedRendererUrl.pathname
+
+    if (!trusted) event.preventDefault()
+  })
+
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url)
+    try {
+      const target = new URL(url)
+      if (target.protocol === 'https:' || target.protocol === 'http:') {
+        void shell.openExternal(target.href)
+      }
+    } catch {
+      // Las URLs no válidas se descartan.
+    }
     return { action: 'deny' }
   })
 
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
-    void window.loadURL(process.env.ELECTRON_RENDERER_URL)
+    void window.loadURL(trustedRendererUrl.href)
   } else {
-    void window.loadFile(join(__dirname, '../renderer/index.html'))
+    void window.loadFile(rendererFilePath)
   }
 }
 
 app.whenReady().then(() => {
+  session.defaultSession.setPermissionCheckHandler(() => false)
+  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false))
+
   protocol.handle('disco-audio', async (request) => {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      return new Response('Método no permitido.', { status: 405 })
+    }
+
     const url = new URL(request.url)
+    if (url.hostname !== 'history' && url.hostname !== 'sample') {
+      return new Response('Recurso no válido.', { status: 404 })
+    }
     const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
     const entry = (await listHistory()).find((item) => item.id === parts[0])
     if (!entry) return new Response('Audio no autorizado.', { status: 404 })

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: disco-release-${{ github.ref }}
@@ -21,10 +21,12 @@ jobs:
 
     steps:
       - name: Descargar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Preparar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -40,13 +42,13 @@ jobs:
           exit 1
 
       - name: Auditar dependencias
-        run: npm audit --audit-level=high
+        run: npm audit
 
       - name: Construir instalador
         run: npm run dist:win
 
       - name: Guardar instalador
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: DISCO-Windows-x64
           path: |
@@ -65,10 +67,12 @@ jobs:
 
     steps:
       - name: Descargar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Preparar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -84,13 +88,13 @@ jobs:
           exit 1
 
       - name: Auditar dependencias
-        run: npm audit --audit-level=high
+        run: npm audit
 
       - name: Construir DMG
         run: npm run dist:mac
 
       - name: Guardar DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: DISCO-macOS-Intel-x64
           path: |
@@ -100,17 +104,60 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+
+  sbom:
+    name: Inventario de dependencias
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias reproducibles
+        run: npm ci
+
+      - name: Generar SBOM CycloneDX
+        run: npm sbom --sbom-format=cyclonedx > SBOM.cdx.json
+
+      - name: Guardar SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: DISCO-SBOM
+          path: SBOM.cdx.json
+          if-no-files-found: error
+          retention-days: 14
+
   release:
     name: Publicar GitHub Release
+    permissions:
+      contents: write
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [windows, macos]
+    needs: [windows, macos, sbom]
     runs-on: ubuntu-latest
 
     steps:
       - name: Descargar instaladores
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: release-assets
+
+      - name: Generar checksums
+        shell: bash
+        run: |
+          sha256sum \
+            release-assets/DISCO-Windows-x64/*.exe \
+            release-assets/DISCO-macOS-Intel-x64/*.dmg \
+            | sed 's#release-assets/DISCO-Windows-x64/##; s#release-assets/DISCO-macOS-Intel-x64/##' \
+            > SHA256SUMS.txt
 
       - name: Publicar release
         env:
@@ -124,8 +171,10 @@ jobs:
 
           gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
-            release-assets/DISCO-Windows-x64/* \
-            release-assets/DISCO-macOS-Intel-x64/* \
+            release-assets/DISCO-Windows-x64/*.exe \
+            release-assets/DISCO-macOS-Intel-x64/*.dmg \
+            release-assets/DISCO-SBOM/SBOM.cdx.json \
+            SHA256SUMS.txt \
             --title "DISCO ${GITHUB_REF_NAME}" \
             --generate-notes \
             "${extra_flags[@]}"
