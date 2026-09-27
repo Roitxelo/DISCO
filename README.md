@@ -11,6 +11,17 @@ Ahora mismo está en beta, pero ya se puede usar de principio a fin en **Windows
 
 > Versión actual: `0.1.0-beta.1` · Motor de análisis: **v3.2**
 
+
+## Un vistazo a DISCO
+
+<img src="docs/assets/identifica.webp" alt="Pantalla Identifica de DISCO mostrando BPM, tonalidad y Camelot" width="100%">
+
+*Identifica: análisis con BPM, tonalidad, Camelot y revisión manual.*
+
+<img src="docs/assets/descarga.webp" alt="Pantalla Descarga de DISCO con un tema preparado para convertir y analizar" width="100%">
+
+*Descarga: trae el audio, elige formato y deja preparado el análisis.*
+
 ## Descargar
 
 La forma más sencilla de probar DISCO es desde la última release:
