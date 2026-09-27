@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { getFfmpegPath } from './ytDlp'
+import { getFfmpegPath } from './ffmpeg'
 import { SAMPLE_FORMATS } from '../../shared/media'
 import type { SampleFormat } from '../../shared/media'
 
@@ -12,8 +12,9 @@ async function normalizationGain(
   duration: number
 ): Promise<number> {
   try {
+    const ffmpegPath = await getFfmpegPath()
     const { stderr } = await execFileAsync(
-      getFfmpegPath(),
+      ffmpegPath,
       [
         '-hide_banner',
         '-nostats',
@@ -68,8 +69,9 @@ export async function exportSample(
     flac: ['-c:a', 'flac', '-compression_level', '8']
   }
 
+  const ffmpegPath = await getFfmpegPath()
   await execFileAsync(
-    getFfmpegPath(),
+    ffmpegPath,
     [
       '-hide_banner',
       '-loglevel',
