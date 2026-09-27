@@ -1,5 +1,34 @@
 # Historial de cambios
 
+## 0.1.0-beta.2 — pendiente de publicación
+
+Beta centrada en endurecimiento, distribución y preparación del repositorio público. No cambia el motor musical ni el flujo principal de trabajo.
+
+### Seguridad
+
+- Bloqueo explícito de navegación fuera del renderer de DISCO.
+- Permisos web innecesarios denegados.
+- Protocolo interno `disco-audio://` más restrictivo.
+- Validación adicional del origen de yt-dlp.
+- Gitleaks sobre todo el historial Git.
+- `npm audit` como bloqueo del CI y de las releases.
+- GitHub Actions fijadas por commit SHA y con permisos mínimos.
+- Dependabot para npm y GitHub Actions.
+
+### Distribución
+
+- Checksums SHA-256 para los instaladores.
+- SBOM CycloneDX en las nuevas releases.
+- Documentación de desarrollo, distribución y revisión de seguridad.
+- La interfaz obtiene la versión real desde Electron en lugar de tenerla escrita a mano.
+
+### Pendiente antes de distribución pública
+
+- verificar/cerrar la estrategia de licencia de la build de FFmpeg incluida;
+- firma Authenticode en Windows;
+- firma y notarización en macOS;
+- soporte validado de Apple Silicon.
+
 ## 0.1.0-beta.1 — 2026-09-26
 
 Primera beta de DISCO que considero suficientemente cerrada como para compartirla fuera del entorno de desarrollo.
