@@ -132,6 +132,6 @@ Y una cosa importante: convertir un MP3 a WAV no recupera la información que ya
 
 El repositorio es visible, pero **DISCO no es un proyecto open source**.
 
-El código puede consultarse para evaluación y beta privada, pero no se concede permiso general para copiarlo, modificarlo o redistribuirlo. Los detalles están en [LICENSE](LICENSE).
+El código puede consultarse para entender y evaluar el proyecto, y las releases oficiales pueden usarse para pruebas personales. No se concede permiso general para copiar, modificar o redistribuir el código. Los detalles están en [LICENSE](LICENSE).
 
 Las dependencias utilizadas por DISCO mantienen sus propias licencias.
