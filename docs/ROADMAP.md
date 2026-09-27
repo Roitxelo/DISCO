@@ -17,6 +17,8 @@ La beta 0.1.0 ya está cerrada. A partir de aquí la prioridad no es meter funci
 - `npm audit` limpio al cerrar la beta.
 - CI multiplataforma con GitHub Actions.
 - Releases automáticas desde tags.
+- FFmpeg externalizado y verificado por SHA-256 antes de ejecutarse.
+- Checksums y SBOM en releases.
 
 ## Lo siguiente
 
