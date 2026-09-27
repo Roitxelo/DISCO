@@ -44,9 +44,28 @@ jobs:
       - name: Comprobar vulnerabilidades altas
         run: npm audit --audit-level=high
 
+  secretos:
+    name: Buscar secretos en el historial
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Descargar historial completo
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Escanear secretos
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+
   build:
     name: Build en ${{ matrix.name }}
-    needs: seguridad
+    needs: [seguridad, secretos]
     strategy:
       fail-fast: false
       matrix:
