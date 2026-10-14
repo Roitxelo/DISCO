@@ -14,7 +14,7 @@ Ahora mismo está en beta, pero ya se puede usar de principio a fin en **Windows
 
 ## Un vistazo a DISCO
 
-<img src="docs/assets/identifica.webp" alt="Pantalla Identifica de DISCO mostrando BPM, tonalidad y Camelot" width="100%">
+<img src="docs/assets/identifica.png" alt="Pantalla Identifica de DISCO mostrando BPM, tonalidad y Camelot" width="100%">
 
 *Identifica: análisis con BPM, tonalidad, Camelot y revisión manual.*
 
